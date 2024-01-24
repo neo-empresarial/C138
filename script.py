@@ -401,7 +401,7 @@ print('--------------------------------------------------')
 #Queremos pegar cada valor da first_column e ver em qual intervalo ele se encaixa
 #Depois, vamos pegar o valor de erro e incerteza correspondente
 
-df_merge_service['Capacidade de Medição e Calibração (CMC)'] = df_merge_service['Capacidade de Medição e Calibração (CMC)'].apply(lambda x: float(re.search(r'[\d,]+', str(x).replace('.', ''))[0].replace(',', '.')) if any(char.isdigit() for char in str(x)) else x)
+df_merge_service['Capacidade de Medição e Calibração (CMC)'] = df_merge_service['Capacidade de Medição e Calibração (CMC)'].apply(lambda x: float(re.search(r'[\d,]+\.?\d*', str(x).replace(',', ''))[0].replace(',', '.')) if any(char.isdigit() for char in str(x)) else x)
 
 print(df_merge_service)
 #LEMBRETE -> Revisar a função abaixo (ainda não está funcionando)
