@@ -9,7 +9,7 @@ from lxml import etree
 from lxml import html
 import re
 
-workbook = openpyxl.load_workbook('certificados.xlsx/Trena a laser.xlsx', data_only=True)
+workbook = openpyxl.load_workbook('certificados.xlsx/CertificadoTESTE.xlsx', data_only=True)
 sheet = workbook.active
 
 # Get the max row count
@@ -378,9 +378,9 @@ print(non_empty_paramenters_values)
 
 #Temos os valores de erro e incerteza, sendo eles strings
 
-float_parameters_values = [float(value.split()[0].replace(',', '.')) for value in non_empty_paramenters_values]
-print('Valores de erro e incerteza em float:')
-print(float_parameters_values)
+# float_parameters_values = [float(value.split()[0].replace(',', '.')) for value in non_empty_paramenters_values]
+# print('Valores de erro e incerteza em float:')
+# print(float_parameters_values)
 
 print('--------------------------------------------------')
 
@@ -401,8 +401,9 @@ print('--------------------------------------------------')
 #Queremos pegar cada valor da first_column e ver em qual intervalo ele se encaixa
 #Depois, vamos pegar o valor de erro e incerteza correspondente
 
-df_merge_service['Capacidade de Medição e Calibração (CMC)'] = df_merge_service['Capacidade de Medição e Calibração (CMC)'].apply(lambda x: float(x.split(' ')[0].replace(',', '.')))
+df_merge_service['Capacidade de Medição e Calibração (CMC)'] = df_merge_service['Capacidade de Medição e Calibração (CMC)'].apply(lambda x: float(re.search(r'[\d,]+', str(x).replace('.', ''))[0].replace(',', '.')) if any(char.isdigit() for char in str(x)) else x)
 
+print(df_merge_service)
 #LEMBRETE -> Revisar a função abaixo (ainda não está funcionando)
 def get_error_and_uncertainty(valor, intervalos):
     for intervalo in intervalos:
