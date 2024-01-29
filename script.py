@@ -8,8 +8,9 @@ from bs4 import BeautifulSoup
 from lxml import etree
 from lxml import html
 import re
+import ast
 
-workbook = openpyxl.load_workbook('certificados.xlsx/CertificadoTESTE.xlsx', data_only=True)
+workbook = openpyxl.load_workbook('certificados.xlsx/Trena a laser.xlsx', data_only=True)
 sheet = workbook.active
 
 # Get the max row count
@@ -259,6 +260,7 @@ print(tables)
 print('--------------------------------------------------')
 
 df_web = scrapper()
+print('df_web:')
 print(df_web)
 
 print('--------------------------------------------------')
@@ -355,7 +357,12 @@ print('--------------------------------------------------')
 
 working_df[working_df.columns[0]] = working_df[working_df.columns[0]].str.lower()
 
+print(working_df)
+print(df_capa_merge)
+
 df_merge_service = pd.merge(df_capa_merge, working_df, left_on=df_capa_merge.iloc[:, 1], right_on=working_df.iloc[:, 0], how='inner')
+
+print(df_merge_service)
 
 df_merge_service = df_merge_service.drop_duplicates().reset_index(drop=True)
 df_merge_service.iloc[:, -1] = df_merge_service.iloc[:, -1].str.replace('*', '')
@@ -369,12 +376,12 @@ print('--------------------------------------------------')
 
 #Aqui, vamos pegar o valor de erro e o valor de incerteza
 
-parameters_values = df_merge_service.iloc[:, -1].values
+# parameters_values = df_merge_service.iloc[:, -1].values
 
-non_empty_paramenters_values = [value for value in parameters_values if pd.notna(value) and value is not None and value != '']
+# non_empty_paramenters_values = [value for value in parameters_values if pd.notna(value) and value is not None and value != '']
 
-print('Valores de erro e incerteza:')
-print(non_empty_paramenters_values)
+# print('Valores de erro e incerteza:')
+# print(non_empty_paramenters_values)
 
 #Temos os valores de erro e incerteza, sendo eles strings
 
@@ -386,13 +393,14 @@ print('--------------------------------------------------')
 
 #Vamos para a parte difícil: extrair o intervalo numérico a partir da string
 
-range_strings = df_merge_service.iloc[:, 4].values
+# range_strings = df_merge_service.iloc[:, 4].values
 # print(range_strings)
 
 df_merge_service['Intervalo'] = df_merge_service.iloc[:, 4].apply(process_string)
 df_merge_service = df_merge_service.dropna(axis=0, how='any')
 df_merge_service = df_merge_service.dropna(axis=1, how='any')  
 
+print('Intervalos numéricos:')
 print(df_merge_service)
 
 print('--------------------------------------------------')
@@ -401,7 +409,42 @@ print('--------------------------------------------------')
 #Queremos pegar cada valor da first_column e ver em qual intervalo ele se encaixa
 #Depois, vamos pegar o valor de erro e incerteza correspondente
 
-df_merge_service['Capacidade de Medição e Calibração (CMC)'] = df_merge_service['Capacidade de Medição e Calibração (CMC)'].apply(lambda x: float(re.search(r'[\d,]+\.?\d*', str(x).replace(',', ''))[0].replace(',', '.')) if any(char.isdigit() for char in str(x)) else x)
+#PONTO DE ERRO
+
+def process_cmc_information(cmc_value):
+    cmc_value = str(cmc_value).strip()
+    
+    # Check if it's a distance (type 1)
+    distance_match = re.match(r'([\d.,]+)\s*([µm]+)', cmc_value)
+    if distance_match:
+        print('Caso 1 utilizado')
+        value = float(distance_match.group(1).replace(',', '.'))
+        unit = distance_match.group(2)
+        return value, unit
+
+    # Check if it's an equation (type 2)
+    equation_match = re.match(r'\[([\s\S]+)\]', cmc_value)
+    if equation_match:
+        print('Caso 2 utilizado')
+        return equation_match.group(1)
+
+    # Check if it's an angle (type 3)
+    angle_match = re.match(r'\s*(\d+)\s*\'\'\s*', cmc_value)
+    if angle_match:
+        print('Caso 3 utilizado')
+        return float(angle_match.group(1))
+
+    # Check if it's a percentage (type 4)
+    percentage_match = re.match(r'([\d.,]+)%', cmc_value)
+    if percentage_match:
+        print('Caso 4 utilizado')
+        return float(percentage_match.group(1).replace(',', '.')) / 100
+
+    # Default case: return the original value
+    return cmc_value
+
+
+df_merge_service['Capacidade de Medição e Calibração (CMC)'] = df_merge_service['Capacidade de Medição e Calibração (CMC)'].apply(process_cmc_information)
 
 print(df_merge_service)
 #LEMBRETE -> Revisar a função abaixo (ainda não está funcionando)
@@ -416,7 +459,8 @@ def get_error_and_uncertainty(valor, intervalos):
 
 single_row = df_merge_service.iloc[0]
 
-print(tables)
+print('Primeira coluna (?)')
+print(single_row)
 
 # Iterate through each table in the 'tables' list
 for i, row in df_merge_service.iterrows():
@@ -430,6 +474,7 @@ for i, row in df_merge_service.iterrows():
 
 # Display the modified tables
 for j, table in enumerate(tables):
+    print('Tabelas enumeradas:')
     print(f"Table {j + 1}:\n{table}\n")
 
 print('--------------------------------------------------')
@@ -453,7 +498,7 @@ for i, table in enumerate(tables):
                 # Check if the range_index is within the valid range of rows in df
                 if 0 <= range_index < len(df_merge_service):
                     # Get the value from the 6th column of df based on the range_index
-                    selected_value = df_merge_service.iloc[range_index, 5]  # Assuming the 6th column index is 5
+                    selected_value = df_merge_service.iloc[range_index, -2]  # Assuming the 6th column index is 5
                     break  # Exit the loop once a match is found
 
         # Update the 'Selected_Value' column with the corresponding value from df
@@ -465,4 +510,130 @@ for i, table in enumerate(tables):
 
 print('--------------------------------------------------')
 
+print('Tabelas com os valores selecionados:')
 print(tables)
+
+print('--------------------------------------------------')
+
+#Aqui, vamos pegar os valores de erro e incerteza e colocar em uma coluna separada
+
+for i, table in enumerate(tables):
+    u_column_index = table.columns[table.iloc[0].astype(str).str.startswith('U')].tolist()
+    if u_column_index:
+        u_column_index = u_column_index[0]
+        print(u_column_index)
+        break
+    
+has_meters = '[m]' in table.iloc[:, u_column_index].values
+has_mm = '[mm]' in table.iloc[:, u_column_index].values
+has_µm = '[µm]' in table.iloc[:, u_column_index].values
+
+
+for i in range(len(tables)):
+    table = tables[i]
+
+    if 'Selected_Value' in table.columns:
+        table[['CMC_Value', 'CMC_Unit']] = table['Selected_Value'].apply(pd.Series)
+
+        table = table.drop('Selected_Value', axis=1)
+
+        tables[i] = table
+    else:
+        print('Não tem Selected_Value')
+
+print(tables)
+
+print ('--------------------------------------------------')
+
+#Agora que temos os valores de CMC e as unidades separadas, podemos trabalhar com as colunas
+
+def convert_to_meters(row):
+    value, unit = row['CMC_Value'], row['CMC_Unit']
+    if has_meters and unit == 'mm':
+        return value / 1000  
+    elif has_meters and unit == 'µm':
+        return value / 1000000  
+    else:
+        return value
+
+def convert_to_mm(row):
+    value, unit = row['CMC_Value'], row['CMC_Unit']
+    if has_mm and unit == 'm':
+        return value * 1000  
+    elif has_mm and unit == 'µm':
+        return value / 1000  
+    else:
+        return value
+
+def convert_to_µm(row):
+    value, unit = row['CMC_Value'], row['CMC_Unit']
+    if has_µm and unit == 'm':
+        return value * 1000000  
+    elif has_µm and unit == 'mm':
+        return value / 1000  
+    else:
+        return value
+    
+for i in range(len(tables)):
+    table = tables[i]
+    if 'CMC_Value' in table.columns and 'CMC_Unit' in table.columns and has_meters:
+        table['CMC_Value'] = table.apply(convert_to_meters, axis=1)
+        tables[i] = table
+    elif 'CMC_Value' in table.columns and 'CMC_Unit' in table.columns and has_mm:
+        table['CMC_Value'] = table.apply(convert_to_mm, axis=1)
+        tables[i] = table
+    elif 'CMC_Value' in table.columns and 'CMC_Unit' in table.columns and has_µm:
+        table['CMC_Value'] = table.apply(convert_to_µm, axis=1)
+        tables[i] = table
+    else:
+        print('Não tem CMC_Value ou CMC_Unit')
+
+for i, table in enumerate(tables):
+    tables[i].iloc[:, u_column_index] = table.iloc[:, u_column_index].apply(convert_to_float)
+
+
+
+print(tables)
+
+print('--------------------------------------------------')
+
+#Vamos comparar a nossa coluna CMC_Value com os valores de U
+
+new_column_name = 'U'
+for i in range(len(tables)):
+    tables[i].columns.values[u_column_index] = new_column_name
+
+for i in range(len(tables)):
+    table = tables[i]
+    table['CMC_Value'] = table['CMC_Value'].replace('', None)
+    table['CMC_Verification'] = None
+    table['Range_Verification'] = None
+
+print(tables)
+
+# Compare the specified columns for each DataFr
+
+error_ocurred = False
+
+for i, table in enumerate(tables):
+    for index, row in table.iterrows():
+        u_column_value = row['U']
+        # print(type(u_column_value))
+        cmc_value = row['CMC_Value']
+        # print(type(cmc_value))
+
+        if pd.notna(cmc_value) and pd.notna(u_column_value):
+            if u_column_value >= cmc_value:
+                print('ok')
+                table.at[index, 'CMC_Verification'] = True
+            elif u_column_value  < cmc_value:
+                print('error')
+                table.at[index, 'CMC_Verification'] = False
+        elif pd.isna(cmc_value) and type(u_column_value) != str and pd.notna(u_column_value):
+            table.at[index, 'Range_Verification'] = True
+
+print(tables)
+
+print('--------------------------------------------------')
+
+
