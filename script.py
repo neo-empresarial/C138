@@ -144,11 +144,6 @@ def create_df_capa():
     df_capa = df_capa.drop_duplicates().reset_index(drop=True)
 
     return df_capa
-# df_capa = pd.DataFrame(capa_data)
-# df_capa = df_capa.dropna(axis=1, how='all')
-# df_capa = df_capa.dropna(axis=0, how='all')
-# df_capa = df_capa[~df_capa.apply(lambda row: 'Ocultar' in row.values, axis=1)]
-# df_capa = df_capa.drop_duplicates().reset_index(drop=True)
 
 df_capa = create_df_capa()
 
