@@ -1190,7 +1190,7 @@ Isso significa que podemos o `HttpServletResponse` para mandar uma mensagem! E f
 
 java
 
-Agora basta apenas imprimir utilizando o método `print()`:
+Agora basta apenas imprimir utilizando o método `#print()`:
 
 java
 
