@@ -89,7 +89,7 @@ def create_df_capa(oi = 1):
     return df_capa
 
 df_capa = create_df_capa()
-print(df_capa)
+# print(df_capa)
 
 def collaborator_compare():
     merged_df = pd.merge(user_data, df_capa, left_on='NMUSUARIO', right_on=2, how='inner')
@@ -102,9 +102,24 @@ def enterpriser_compare():
 ### criar função que chama o create_df_capa(), acha a linha do CONTRATANTE, splita a célula
 ### do contrante + endereço e faz um merge com a cali_data usando só o contrante
 
-### já começa o dia conectando esse vs code ao teu github e fazendo um push
+    df_capa = create_df_capa()
 
-    return df_capa
+    search_condition = (df_capa[0] == 'CONTRATANTE')
+    result = df_capa.loc[search_condition]
+
+    df_capa['Enterprise'] = result[2].str.split('\n').str[0]
+    df_capa['Adress'] = result[2].str.split('\n').str[1]
+
+    df_capa['Enterprise_Abbreviation'] = df_capa['Enterprise'].str.split(' ').str[0]
+
+    cali_data['NMFANTASIACONTRATANTE'] = cali_data['NMFANTASIACONTRATANTE'].str.split(' ').str[0]
+
+    df_merged = pd.merge(cali_data, df_capa, left_on='NMFANTASIACONTRATANTE', right_on='Enterprise_Abbreviation', how='inner')
+    df_merged = df_merged.dropna(axis=1, how='all')
+
+    return df_merged
+
+print(collaborator_compare())
 
 print(enterpriser_compare())
 
