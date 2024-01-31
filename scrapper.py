@@ -38,7 +38,7 @@ def scrapper():
   df = df.dropna(axis=0, how='all') #Aqui, removemos as linhas que só tem valores nulos
 
   # df = df[~df[1].astype(str).str.startswith('Método')]
-  # print(df)
+  # #print(df)
 
   df = df.replace('Medição de', 'Medir', regex=True)
   df = df.replace('Medição por', 'Medir', regex=True)
@@ -52,4 +52,4 @@ def scrapper():
   return df
 
 df_web = scrapper()
-print(df_web.head(50))
+#print(df_web.head(50))

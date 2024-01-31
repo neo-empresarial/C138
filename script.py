@@ -9,6 +9,7 @@ from lxml import etree
 from lxml import html
 import re
 import ast
+from openpyxl.styles import PatternFill
 
 workbook = openpyxl.load_workbook('certificados.xlsx/Trena a laser.xlsx', data_only=True)
 sheet = workbook.active
@@ -75,7 +76,7 @@ def scrapper():
     df = df.dropna(axis=0, how='all') #Aqui, removemos as linhas que só tem valores nulos
 
     # df = df[~df[1].astype(str).str.startswith('Método')]
-    # print(df)
+    # #print(df)
 
     df = df.replace('Medição de', 'Medir', regex=True)
     df = df.replace('Medição por', 'Medir por', regex=True)
@@ -109,7 +110,7 @@ def process_string(string):
 
 last_column = get_last_column(sheet)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 centro_found = False
 padroes_found = False
@@ -130,7 +131,7 @@ for i in range (1, last_row + 1):
         if centro_found and not padroes_found:
             row_values.append(cell_obj.value)
             if len(row_values) == 9:
-                # print(f'valor da linha {i}: {row_values}')
+                # #print(f'valor da linha {i}: {row_values}')
                 capa_data.append(row_values)
 
     if padroes_found:
@@ -147,11 +148,11 @@ def create_df_capa():
 
 df_capa = create_df_capa()
 
-print("Informações da capa:")
-print(df_capa)
+#print("Informações da capa:")
+#print(df_capa)
 
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 #Aqui, vamos tentar extrair os as máquinas utilizadas na medição
 
@@ -203,10 +204,10 @@ machines_df = machines_df.drop_duplicates().reset_index(drop=True)
 machines_df = machines_df[machines_df[descricao_column] != '#N/A']
 machines_df.columns = ['Descrição do serviço']
 
-print('Máquinas utilizadas:')
-print(machines_df)
+#print('Máquinas utilizadas:')
+#print(machines_df)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 #Nesse bloco de código, fazemos um loop para pegar somente os valores tabelados de medição do certificado
 
@@ -255,20 +256,20 @@ for i in range(len(new_table_indices)):
     table = df_dados.iloc[start_idx:end_idx, :].reset_index(drop=True)
     tables.append(table)
 
-print('Dados da medição:')
-print(df_dados)
-print(tables)
+#print('Dados da medição:')
+#print(df_dados)
+#print(tables)
 
 #O índice dentro do [] indica qual tabela específica vamos printar (em ordem de cima para baixo no documento)
 #Ou seja, tables separa as tabelas que temos dentro do df_dados
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 df_web = scrapper()
-print('df_web:')
-print(df_web)
+#print('df_web:')
+#print(df_web)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 # Quando damos um merge() nos dataframes, conseguimos um resultado semelhante ao de um PROCV
 # Ou seja, aqui estamos fazendo um PROCV entre site e máquina, logo temos a regra da máquina utilizada para cada serviço
@@ -276,10 +277,10 @@ print('--------------------------------------------------')
 df_merge = pd.merge(machines_df, df_web, on='Descrição do serviço', how='left')
 df_merge = df_merge.drop_duplicates().reset_index(drop=True)
 
-print('PROCV entre df_web e machines_df:')
-print(df_merge)
+#print('PROCV entre df_web e machines_df:')
+#print(df_merge)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 df_capa_merge = df_capa.copy()
 df_web_merge = df_web.copy()
@@ -291,18 +292,18 @@ df_service = pd.merge(df_capa_merge, df_web_merge, left_on=df_capa_merge.iloc[:,
 df_service = df_service.drop_duplicates().reset_index(drop=True)
 
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
-print('PROCV entre df_capa e df_web:')
-print(df_service)
+#print('PROCV entre df_capa e df_web:')
+#print(df_service)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 #Nesse ponto do código, temos todas as informações que precisamos para fazer os cálculos
 
 #Vamos transformar a coluna de medições em números, extrair o maior valor e usá-lo para saber qual regra usar
 
-print(tables)
+#print(tables)
 
 first_column = tables[0].iloc[:, 0]
     
@@ -311,19 +312,19 @@ for i, table in enumerate(tables):
 
 first_column.columns = ['Resultados']
 
-print(first_column)
+#print(first_column)
 
 last_value = first_column.iloc[-1]
-print(last_value)
+#print(last_value)
 
 #Temos o maior valor (sempre o mais inferior da tabela), agora vamos usar ele para saber qual regra usar
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 # Vamos tentar resolver uma questão sobre trabalhos feitos em campo ou em laboratório
 # Imaginamos que, para trabalhos feitos em campo, existe alguma célula com um texto específico
 
-print('Separando o df_web em dois data frames diferentes:')
+#print('Separando o df_web em dois data frames diferentes:')
 
 df_web_split = df_web.copy()
 
@@ -332,52 +333,52 @@ indices = df_web_split[df_web_split['Descrição do serviço'] == 'INSTRUMENTOS 
 df_web_lab = df_web_split.iloc[:indices - 2]
 df_web_field = df_web_split.iloc[indices - 2:]
 
-print('df para medições em laboratório:')
-print(df_web_lab)
+#print('df para medições em laboratório:')
+#print(df_web_lab)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
-print('df para medições em campo:')
-print(df_web_field)
+#print('df para medições em campo:')
+#print(df_web_field)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 #Vamos descobrir se o certificado é de medição em campo ou em laboratório
 
 if 'LOCAL DA CALIBRAÇÃO' in df_capa.iloc[:, 0].astype(str).values:
-    print('Certificado de medição em campo')
+    #print('Certificado de medição em campo')
     working_df = df_web_field
 else:
-    print('Certificado de medição em laboratório')
+    #print('Certificado de medição em laboratório')
     working_df = df_web_lab
 
-print('Dataframe correto para a medição apresentada no certificado:')
-print(working_df)
+#print('Dataframe correto para a medição apresentada no certificado:')
+#print(working_df)
 
 #Assim, working_df vai sempre armazenar o dataframe correto para utilizarmos no merge()
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 # Vamos partir para o merge() e assim ter as informações de erro
 
 working_df[working_df.columns[0]] = working_df[working_df.columns[0]].str.lower()
 
-print(working_df)
-print(df_capa_merge)
+#print(working_df)
+#print(df_capa_merge)
 
 df_merge_service = pd.merge(df_capa_merge, working_df, left_on=df_capa_merge.iloc[:, 1], right_on=working_df.iloc[:, 0], how='inner')
 
-print(df_merge_service)
+#print(df_merge_service)
 
 df_merge_service = df_merge_service.drop_duplicates().reset_index(drop=True)
 df_merge_service.iloc[:, -1] = df_merge_service.iloc[:, -1].str.replace('*', '')
 df_merge_service = df_merge_service.dropna(axis=0, how='all')
 df_merge_service = df_merge_service.dropna(axis=1, how='all')
 
-print('PROCV entre df_capa e df_web:')
-print(df_merge_service)
+#print('PROCV entre df_capa e df_web:')
+#print(df_merge_service)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 #Aqui, vamos pegar o valor de erro e o valor de incerteza
 
@@ -385,30 +386,30 @@ print('--------------------------------------------------')
 
 # non_empty_paramenters_values = [value for value in parameters_values if pd.notna(value) and value is not None and value != '']
 
-# print('Valores de erro e incerteza:')
-# print(non_empty_paramenters_values)
+# #print('Valores de erro e incerteza:')
+# #print(non_empty_paramenters_values)
 
 #Temos os valores de erro e incerteza, sendo eles strings
 
 # float_parameters_values = [float(value.split()[0].replace(',', '.')) for value in non_empty_paramenters_values]
-# print('Valores de erro e incerteza em float:')
-# print(float_parameters_values)
+# #print('Valores de erro e incerteza em float:')
+# #print(float_parameters_values)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 #Vamos para a parte difícil: extrair o intervalo numérico a partir da string
 
 # range_strings = df_merge_service.iloc[:, 4].values
-# print(range_strings)
+# #print(range_strings)
 
 df_merge_service['Intervalo'] = df_merge_service.iloc[:, 4].apply(process_string)
 df_merge_service = df_merge_service.dropna(axis=0, how='any')
 df_merge_service = df_merge_service.dropna(axis=1, how='any')  
 
-print('Intervalos numéricos:')
-print(df_merge_service)
+#print('Intervalos numéricos:')
+#print(df_merge_service)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 #Agora que temos todas as peças, vamos ao que importa: os cálculos
 #Queremos pegar cada valor da first_column e ver em qual intervalo ele se encaixa
@@ -422,7 +423,7 @@ def process_cmc_information(cmc_value):
     # Check if it's a distance (type 1)
     distance_match = re.match(r'([\d.,]+)\s*([µm]+)', cmc_value)
     if distance_match:
-        print('Caso 1 utilizado')
+        #print('Caso 1 utilizado')
         value = float(distance_match.group(1).replace(',', '.'))
         unit = distance_match.group(2)
         return value, unit
@@ -430,19 +431,19 @@ def process_cmc_information(cmc_value):
     # Check if it's an equation (type 2)
     equation_match = re.match(r'\[([\s\S]+)\]', cmc_value)
     if equation_match:
-        print('Caso 2 utilizado')
+        #print('Caso 2 utilizado')
         return equation_match.group(1)
 
     # Check if it's an angle (type 3)
     angle_match = re.match(r'\s*(\d+)\s*\'\'\s*', cmc_value)
     if angle_match:
-        print('Caso 3 utilizado')
+        #print('Caso 3 utilizado')
         return float(angle_match.group(1))
 
     # Check if it's a percentage (type 4)
     percentage_match = re.match(r'([\d.,]+)%', cmc_value)
     if percentage_match:
-        print('Caso 4 utilizado')
+        #print('Caso 4 utilizado')
         return float(percentage_match.group(1).replace(',', '.')) / 100
 
     # Default case: return the original value
@@ -451,7 +452,7 @@ def process_cmc_information(cmc_value):
 
 df_merge_service['Capacidade de Medição e Calibração (CMC)'] = df_merge_service['Capacidade de Medição e Calibração (CMC)'].apply(process_cmc_information)
 
-print(df_merge_service)
+#print(df_merge_service)
 #LEMBRETE -> Revisar a função abaixo (ainda não está funcionando)
 def get_error_and_uncertainty(valor, intervalos):
     for intervalo in intervalos:
@@ -464,8 +465,8 @@ def get_error_and_uncertainty(valor, intervalos):
 
 single_row = df_merge_service.iloc[0]
 
-print('Primeira coluna (?)')
-print(single_row)
+#print('Primeira coluna (?)')
+#print(single_row)
 
 # Iterate through each table in the 'tables' list
 for i, row in df_merge_service.iterrows():
@@ -477,12 +478,9 @@ for i, row in df_merge_service.iterrows():
         # Create a new column with True if the value is within the range, False otherwise
         table[f'Within_Range_{i + 1}'] = pd.to_numeric(table.iloc[:, 0], errors='coerce').between(*intervalo)
 
-# Display the modified tables
-for j, table in enumerate(tables):
-    print('Tabelas enumeradas:')
-    print(f"Table {j + 1}:\n{table}\n")
 
-print('--------------------------------------------------')
+
+#print('--------------------------------------------------')
 
 #Agora, vamos coorelacionar df_merge_service com as tabelas
 
@@ -510,15 +508,14 @@ for i, table in enumerate(tables):
         table.at[index, 'Selected_Value'] = selected_value
 
 # Display the modified tables
-for i, table in enumerate(tables):
-    print(f"Table {i + 1}:\n{table}\n")
 
-print('--------------------------------------------------')
 
-print('Tabelas com os valores selecionados:')
-print(tables)
+#print('--------------------------------------------------')
 
-print('--------------------------------------------------')
+#print('Tabelas com os valores selecionados:')
+#print(tables)
+
+# print('--------------------------------------------------')
 
 #Aqui, vamos pegar os valores de erro e incerteza e colocar em uma coluna separada
 
@@ -526,7 +523,7 @@ for i, table in enumerate(tables):
     u_column_index = table.columns[table.iloc[0].astype(str).str.startswith('U')].tolist()
     if u_column_index:
         u_column_index = u_column_index[0]
-        print(u_column_index)
+        #print(u_column_index)
         break
     
 has_meters = '[m]' in table.iloc[:, u_column_index].values
@@ -544,11 +541,8 @@ for i in range(len(tables)):
 
         tables[i] = table
     else:
-        print('Não tem Selected_Value')
+        pass
 
-print(tables)
-
-print ('--------------------------------------------------')
 
 #Agora que temos os valores de CMC e as unidades separadas, podemos trabalhar com as colunas
 
@@ -591,16 +585,16 @@ for i in range(len(tables)):
         table['CMC_Value'] = table.apply(convert_to_µm, axis=1)
         tables[i] = table
     else:
-        print('Não tem CMC_Value ou CMC_Unit')
+        pass
 
 for i, table in enumerate(tables):
     tables[i].iloc[:, u_column_index] = table.iloc[:, u_column_index].apply(convert_to_float)
 
 
 
-print(tables)
+#print(tables)
 
-print('--------------------------------------------------')
+#print('--------------------------------------------------')
 
 #Vamos comparar a nossa coluna CMC_Value com os valores de U
 
@@ -614,31 +608,83 @@ for i in range(len(tables)):
     table['CMC_Verification'] = None
     table['Range_Verification'] = None
 
-print(tables)
+#print(tables)
 
 # Compare the specified columns for each DataFr
 
+#print( '--------------------------------------------------')
 error_ocurred = False
 
 for i, table in enumerate(tables):
     for index, row in table.iterrows():
         u_column_value = row['U']
-        # print(type(u_column_value))
+        # #print(type(u_column_value))
         cmc_value = row['CMC_Value']
-        # print(type(cmc_value))
+        # #print(type(cmc_value))
 
         if pd.notna(cmc_value) and pd.notna(u_column_value):
             if u_column_value >= cmc_value:
-                print('ok')
-                table.at[index, 'CMC_Verification'] = True
-            elif u_column_value  < cmc_value:
-                print('error')
                 table.at[index, 'CMC_Verification'] = False
+            elif u_column_value  < cmc_value:
+                table.at[index, 'CMC_Verification'] = True
         elif pd.isna(cmc_value) and type(u_column_value) != str and pd.notna(u_column_value):
             table.at[index, 'Range_Verification'] = True
 
-print(tables)
-
-print('--------------------------------------------------')
+#print(tables)
 
 
+#print('--------------------------------------------------')
+
+#Vamos tentar partir para a última parte do projeto, pintar as células do Excel baseado nos outputs que obtivemos
+
+def find_excel_row_by_value(sheet, target_value):
+    max_row = sheet.max_row
+
+    # Iterate through rows in the Excel sheet
+    for i in range(1, max_row + 1):
+        cell_obj = sheet.cell(row=i, column=1)  # Assuming the first column in df_dados corresponds to the second column in Excel
+
+        # #print(f"Checking Excel row {i}, Value: {cell_obj.value}, Target: {target_value}")
+
+        # Check if the cell contains the target value
+        if cell_obj.value == target_value:
+            print(f'Match found at row {i}')
+            return i  # Return the row number if found
+
+    return None  # Return None if not found
+
+
+num_rows_painted = 0
+# Iterate through each DataFrame in the list
+for i, table in enumerate(tables):
+    print(table)
+
+    for index, row in table.iterrows():
+        # Assume the first column in the table corresponds to the second column in Excel
+
+        if row['Range_Verification'] == True or row['CMC_Verification'] == True:
+            target_value = row[0]
+            target_value_str = str(target_value).replace('.', ',')
+        # #print(f'Looking for target value: {target_value_str}')
+        # Find the row in the Excel file that corresponds to the target value
+            excel_row = find_excel_row_by_value(sheet, target_value_str)
+
+            if excel_row is not None and (row['Range_Verification'] or row['CMC_Verification']) == True:
+            # Iterate through columns in the DataFrame
+                for col_num, value in enumerate(row):
+                # Assuming you want to color cells starting from the second column
+                    cell_to_paint = sheet.cell(row=excel_row, column=col_num + 1)
+
+                # Set the fill color for the cell
+                    fill_color = 'EA4335'  # Specify the color in RGB format (here, red)
+                    fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
+                    cell_to_paint.fill = fill
+        
+            num_rows_painted += 1
+            
+        else:
+            pass
+        
+# Save the changes to the Excel file
+workbook.save('certificados-finalizados/Trena a laser.xlsx')
+print(f'Finished painting {num_rows_painted} rows in the Excel file')
