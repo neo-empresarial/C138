@@ -11,6 +11,7 @@ import re
 import ast
 from openpyxl.styles import PatternFill
 import numpy as np
+import sys
 
 workbook = openpyxl.load_workbook('certificados.xlsx/Trena a laser.xlsx', data_only=True)
 sheet = workbook.active
@@ -294,18 +295,6 @@ df_service = pd.merge(df_capa_merge, df_web_merge, left_on=df_capa_merge.iloc[:,
 df_service = df_service.drop_duplicates().reset_index(drop=True)
 
 
-#print('--------------------------------------------------')
-
-#print('PROCV entre df_capa e df_web:')
-#print(df_service)
-
-#print('--------------------------------------------------')
-
-#Nesse ponto do código, temos todas as informações que precisamos para fazer os cálculos
-
-#Vamos transformar a coluna de medições em números, extrair o maior valor e usá-lo para saber qual regra usar
-
-#print(tables)
 
 first_column = tables[0].iloc[:, 0]
     
@@ -317,16 +306,12 @@ first_column.columns = ['Resultados']
 #print(first_column)
 
 last_value = first_column.iloc[-1]
-#print(last_value)
 
 #Temos o maior valor (sempre o mais inferior da tabela), agora vamos usar ele para saber qual regra usar
-
-#print('--------------------------------------------------')
 
 # Vamos tentar resolver uma questão sobre trabalhos feitos em campo ou em laboratório
 # Imaginamos que, para trabalhos feitos em campo, existe alguma célula com um texto específico
 
-#print('Separando o df_web em dois data frames diferentes:')
 
 df_web_split = df_web.copy()
 
@@ -335,89 +320,38 @@ indices = df_web_split[df_web_split['Descrição do serviço'] == 'INSTRUMENTOS 
 df_web_lab = df_web_split.iloc[:indices - 2]
 df_web_field = df_web_split.iloc[indices - 2:]
 
-#print('df para medições em laboratório:')
-#print(df_web_lab)
-
-#print('--------------------------------------------------')
-
-#print('df para medições em campo:')
-#print(df_web_field)
-
-#print('--------------------------------------------------')
-
 #Vamos descobrir se o certificado é de medição em campo ou em laboratório
 
 if 'LOCAL DA CALIBRAÇÃO' in df_capa.iloc[:, 0].astype(str).values:
-    #print('Certificado de medição em campo')
     working_df = df_web_field
 else:
-    #print('Certificado de medição em laboratório')
     working_df = df_web_lab
 
-#print('Dataframe correto para a medição apresentada no certificado:')
-#print(working_df)
 
 #Assim, working_df vai sempre armazenar o dataframe correto para utilizarmos no merge()
 
-#print('--------------------------------------------------')
 
 # Vamos partir para o merge() e assim ter as informações de erro
 
 working_df[working_df.columns[0]] = working_df[working_df.columns[0]].str.lower()
 
-#print(working_df)
-#print(df_capa_merge)
-
 df_merge_service = pd.merge(df_capa_merge, working_df, left_on=df_capa_merge.iloc[:, 1], right_on=working_df.iloc[:, 0], how='inner')
-
-#print(df_merge_service)
 
 df_merge_service = df_merge_service.drop_duplicates().reset_index(drop=True)
 df_merge_service.iloc[:, -1] = df_merge_service.iloc[:, -1].str.replace('*', '')
 df_merge_service = df_merge_service.dropna(axis=0, how='all')
 df_merge_service = df_merge_service.dropna(axis=1, how='all')
 
-#print('PROCV entre df_capa e df_web:')
-#print(df_merge_service)
-
-#print('--------------------------------------------------')
-
-#Aqui, vamos pegar o valor de erro e o valor de incerteza
-
-# parameters_values = df_merge_service.iloc[:, -1].values
-
-# non_empty_paramenters_values = [value for value in parameters_values if pd.notna(value) and value is not None and value != '']
-
-# #print('Valores de erro e incerteza:')
-# #print(non_empty_paramenters_values)
-
-#Temos os valores de erro e incerteza, sendo eles strings
-
-# float_parameters_values = [float(value.split()[0].replace(',', '.')) for value in non_empty_paramenters_values]
-# #print('Valores de erro e incerteza em float:')
-# #print(float_parameters_values)
-
-#print('--------------------------------------------------')
-
 #Vamos para a parte difícil: extrair o intervalo numérico a partir da string
 
-# range_strings = df_merge_service.iloc[:, 4].values
-# #print(range_strings)
 
 df_merge_service['Intervalo'] = df_merge_service.iloc[:, 4].apply(process_string)
 df_merge_service = df_merge_service.dropna(axis=0, how='any')
 df_merge_service = df_merge_service.dropna(axis=1, how='any')  
 
-#print('Intervalos numéricos:')
-#print(df_merge_service)
-
-#print('--------------------------------------------------')
-
 #Agora que temos todas as peças, vamos ao que importa: os cálculos
 #Queremos pegar cada valor da first_column e ver em qual intervalo ele se encaixa
 #Depois, vamos pegar o valor de erro e incerteza correspondente
-
-#PONTO DE ERRO
 
 def process_cmc_information(cmc_value):
     cmc_value = str(cmc_value).strip()
@@ -454,21 +388,15 @@ def process_cmc_information(cmc_value):
 
 df_merge_service['Capacidade de Medição e Calibração (CMC)'] = df_merge_service['Capacidade de Medição e Calibração (CMC)'].apply(process_cmc_information)
 
-#print(df_merge_service)
-#LEMBRETE -> Revisar a função abaixo (ainda não está funcionando)
 def get_error_and_uncertainty(valor, intervalos):
     for intervalo in intervalos:
         if intervalo[0] <= valor <= intervalo[1]:
             return intervalo[0]
     return None
 
-
-# first_column['Valor Correspondente'] = first_column.apply(lambda x: get_error_and_uncertainty(float(x) if x is not None else None, df_merge_service['Intervalo']))
-
 single_row = df_merge_service.iloc[0]
 
-#print('Primeira coluna (?)')
-#print(single_row)
+#Aqui, vamos pegar os valores de erro e incerteza e colocar em uma coluna separada
 
 # Iterate through each table in the 'tables' list
 for i, row in df_merge_service.iterrows():
@@ -479,10 +407,6 @@ for i, row in df_merge_service.iterrows():
         
         # Create a new column with True if the value is within the range, False otherwise
         table[f'Within_Range_{i + 1}'] = pd.to_numeric(table.iloc[:, 0], errors='coerce').between(*intervalo)
-
-
-
-#print('--------------------------------------------------')
 
 #Agora, vamos coorelacionar df_merge_service com as tabelas
 
@@ -509,16 +433,6 @@ for i, table in enumerate(tables):
         # Update the 'Selected_Value' column with the corresponding value from df
         table.at[index, 'Selected_Value'] = selected_value
 
-# Display the modified tables
-
-
-#print('--------------------------------------------------')
-
-#print('Tabelas com os valores selecionados:')
-#print(tables)
-
-# print('--------------------------------------------------')
-
 #Aqui, vamos pegar os valores de erro e incerteza e colocar em uma coluna separada
 
 for i, table in enumerate(tables):
@@ -544,7 +458,6 @@ for i in range(len(tables)):
         tables[i] = table
     else:
         pass
-
 
 #Agora que temos os valores de CMC e as unidades separadas, podemos trabalhar com as colunas
 
@@ -657,23 +570,13 @@ for i, table in enumerate(tables):
         elif pd.isna(cmc_value) and type(u_column_value) != str and pd.notna(u_column_value):
             table.at[index, 'Range_Verification'] = True
 
-#print(tables)
-
-
-#print('--------------------------------------------------')
-
-#Vamos tentar partir para a última parte do projeto, pintar as células do Excel baseado nos outputs que obtivemos
-
-# print(resolucao_value)
 
 def find_excel_row_by_value(sheet, target_value):
     max_row = sheet.max_row
 
     # Iterate through rows in the Excel sheet
     for i in range(1, max_row + 1):
-        cell_obj = sheet.cell(row=i, column=1)  # Assuming the first column in df_dados corresponds to the second column in Excel
-
-        # #print(f"Checking Excel row {i}, Value: {cell_obj.value}, Target: {target_value}")
+        cell_obj = sheet.cell(row=i, column=1)  
 
         # Check if the cell contains the target value
         if cell_obj.value == target_value:
@@ -713,11 +616,6 @@ for i, table in enumerate(tables):
             
         else:
             pass
-        
-# Save the changes to the Excel file
-
-# print(f'Finished painting {num_rows_painted} rows in the Excel file'
-
 
 print(tables)
 
@@ -732,9 +630,9 @@ def verify_origin():
     print(origin_column)
 
     if origin_column[1] == 'LMD':
-        print('Erro: O certificado não é do padrão CERTI')
+        print('Erro: O certificado nao e do padrao CERTI')
     else:
-        print('O certificado é do padrão CERTI')
+        print('O certificado e do padrao CERTI')
 
 def verify_pattern_alignment():
     start_row = None
@@ -763,14 +661,278 @@ def verify_pattern_alignment():
                 else:
                     print(f'Erro de alinhamento: {cell.coordinate}')
 
-verify_origin()
-verify_pattern_alignment()
+def verify_pattern_font():
+    start_row = None
+    end_row = None
+
+    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
+        for cell in row:
+            if cell.value == 'Padrões utilizados':
+                start_row = cell.row + 2  # Start from the next row
+            elif cell.value == 'Procedimento de calibração':
+                end_row = cell.row - 1  # End at the previous row
+                break
+
+    for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
+        for cell in row:
+            # Check if the cell is not empty
+            if cell.value is not None:
+                # Get alignment properties
+                font_name = cell.font.name
+                font_size = cell.font.sz
+                if font_name == 'Nunito Sans':
+                    if cell.row == start_row and font_size == 10:
+                        pass
+                    elif cell.row == start_row and font_size == 9:
+                        print(f'Fonte de cabecalho incorreta {cell.coordinate} -> {font_size}, tamanho de fonte esperado: 10')
+                    elif cell.row != start_row and font_size == 9:
+                        pass
+                    else:
+                        print(f'Erro de fonte: {cell.coordinate}, fonte atual: {font_name} - fonte correta: Nunito Sans, tamanho atual: {font_size} - tamanho correto: 9')
+                else:
+                    print(f'Erro de fonte: {cell.coordinate}, fonte atual: {font_name} - fonte correta: Nunito Sans, tamanho atual: {font_size} - tamanho correto: 9')
+
+def verify_text_font():
+    start_row = None
+    end_row = None
+
+    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
+        for cell in row:
+            if cell.value == 'Procedimento de calibração':
+                start_row = cell.row + 1  # Start from the next row
+            elif cell.value == 'Resultados':
+                end_row = cell.row - 1  # End at the previous row
+                break
+
+    for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
+        for cell in row:
+            # Check if the cell is not empty
+            if cell.value is not None:
+                font_name = cell.font.name
+                font_size = cell.font.sz
+                if font_name == 'Nunito Sans' and font_size == 10:
+                    pass
+                else:
+                    print(f'Erro de fonte: {cell.coordinate}, fonte atual: {font_name} - fonte correta: Nunito Sans, tamanho atual: {font_size} - tamanho correto: 10')
+
+def verify_titles():
+    titles = []
+    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
+        for cell in row:
+            if cell.value == 'Padrões utilizados':
+                titles.append(cell.coordinate)
+            elif cell.value == 'Procedimento de calibração':
+                titles.append(cell.coordinate)
+            elif cell.value == 'Resultados':
+                titles.append(cell.coordinate)
+            elif cell.value == 'Observações':
+                titles.append(cell.coordinate)
+            else:
+                pass
+    for item in titles:
+        font_name = sheet[item].font.name
+        font_size = sheet[item].font.sz
+        font_bold = sheet[item].font.b
+        if font_name == 'Nunito Sans' and font_size == 11 and font_bold == True:
+            pass
+        elif font_name != 'Nunito Sans':
+            print(f'Erro de fonte: {item}, fonte atual: {font_name} - fonte correta: Nunito Sans')
+        elif font_size != 11:
+            print(f'Erro de tamanho de fonte: {item}, tamanho atual: {font_size} - tamanho correto: 11')
+        elif font_bold != True:
+            print(f'Erro de negrito: {item}, negrito atual: {font_bold} - negrito correto: True')
+        else:
+            pass
+
+def verify_observations():
+    start_row = None
+    end_row = get_last_row(sheet)
+
+    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
+        for cell in row:
+            if cell.value == 'Observações':
+                start_row = cell.row + 1
+                pass
+    for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
+        for cell in row:
+            # Check if the cell is not empty
+            if cell.value is not None:
+                # Get alignment properties
+                font_name = cell.font.name
+                font_size = cell.font.sz
+                if font_name == 'Nunito Sans' and font_size == 9:
+                    pass
+                else:
+                    print(f'Erro nas observacoes: {cell.coordinate}, fonte atual: {font_name} - fonte correta: Nunito Sans, tamanho atual: {font_size} - tamanho correto: 9.0')
 
 
+def verify_executer():
+    start_row = None
+    end_row = None
 
+    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
+        for cell in row:
+            if cell.value and str(cell.value).startswith('Executor'):
+                start_row = cell.row
+            elif cell.value == 'Padrões utilizados':
+                end_row = cell.row - 1
+                break
+    for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
+        for cell in row:
+            # Check if the cell is not 
+            if cell.value is not None:
+                if not str(cell.value).startswith('Executor'):
+                    font_name = cell.font.name
+                    font_size = cell.font.sz
+                    font_bold = cell.font.b
+                    if font_name == 'Nunito Sans' and font_size == 10 and font_bold == True:
+                        pass
+                    elif font_name != 'Nunito Sans':
+                        print(f'Erro de fonte: {cell.coordinate}, fonte atual: {font_name} - fonte correta: Nunito Sans')
+                    elif font_size != 10:
+                        print(f'Erro de tamanho de fonte: {cell.coordinate}, tamanho atual: {font_size} - tamanho correto: 10.0')
+                    elif font_bold != True:
+                        print(f'Erro de negrito: {cell.coordinate}, negrito atual: {font_bold} - negrito correto: True')
+                    else:
+                        pass
 
+def verify_table_observation():
+    start_row = None
+    end_row = None
 
+    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
+        for cell in row:
+            if cell.value == 'Resultados':
+                start_row = cell.row + 1
+            elif cell.value == 'Observações':
+                end_row = cell.row - 1
+                break
+    for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
+        for cell in row:
+            # Check if the cell is not empty
+            if cell.value is not None:
+                if str(cell.value).startswith('Obs'):
+                    font_name = cell.font.name
+                    font_size = cell.font.sz
+                    if font_name == 'Nunito Sans' and font_size == 8:
+                        pass
+                    elif font_name != 'Nunito Sans':
+                        print(f'Erro de fonte: {cell.coordinate}, fonte atual: {font_name} - fonte correta: Nunito Sans')
+                    elif font_size != 8:
+                        print(f'Erro de tamanho de fonte: {cell.coordinate}, tamanho atual: {font_size} - tamanho correto: 8.0')
+                    else:
+                        pass
 
+def verify_header():
+    start_row_height = sheet.row_dimensions[1].height
+    second_row_height = sheet.row_dimensions[2].height
+    third_row_height = sheet.row_dimensions[3].height
+    fourth_row_height = sheet.row_dimensions[4].height
+    fifth_row_height = sheet.row_dimensions[5].height
+
+    start_row_name = sheet.cell(row=1, column=1).font.name
+    start_row_size = sheet.cell(row=1, column=1).font.sz
+    start_row_bold = sheet.cell(row=1, column=1).font.b
+
+    second_row_name = sheet.cell(row=1 + 1, column=1).font.name
+    second_row_size = sheet.cell(row=1 + 1, column=1).font.sz
+    second_row_bold = sheet.cell(row=1 + 1, column=1).font.b
+
+    third_row_name = sheet.cell(row=1 + 2, column=1).font.name
+    third_row_size = sheet.cell(row=1 + 2, column=1).font.sz
+    third_row_bold = sheet.cell(row=1 + 2, column=1).font.b
+
+    fourth_row_name = sheet.cell(row=1 + 3, column=1).font.name
+    fourth_row_size = sheet.cell(row=1 + 3, column=1).font.sz
+    fourth_row_bold = sheet.cell(row=1 + 3, column=1).font.b
+
+    fifth_row_name = sheet.cell(row=1 + 4, column=1).font.name
+    fifth_row_size = sheet.cell(row=1 + 4, column=1).font.sz
+    fifht_row_bold = sheet.cell(row=1 + 4, column=1).font.b
+
+    if start_row_name == 'Nunito Sans' and start_row_size == 14 and start_row_height == 24.75 and start_row_bold != True:
+        pass
+    elif start_row_name != 'Nunito Sans':
+        print(f'Erro de fonte: {sheet.cell(row=start_row, column=1).coordinate}, fonte atual: {start_row_name} - fonte correta: Nunito Sans')
+    elif start_row_size != 14:
+        print(f'Erro de tamanho de fonte: {sheet.cell(row=start_row, column=1).coordinate}, tamanho atual: {start_row_size} - tamanho correto: 14.0')
+    elif start_row_height != 24.75:
+        print(f'Erro de altura de linha: {sheet.cell(row=start_row, column=1).coordinate}, altura atual: {start_row_height} - altura correta: 24.75')
+    elif start_row_bold == True:
+        print(f'Erro de negrito: {sheet.cell(row=start_row, column=1).coordinate}, negrito atual: {start_row_bold} - negrito correto: False')
+    else:
+        pass
+
+    if second_row_name == 'Nunito Sans' and second_row_size == 14 and second_row_height == 17.25 and second_row_bold != True:
+        pass
+    elif second_row_name != 'Nunito Sans':
+        print(f'Erro de fonte: {sheet.cell(row=1 + 1, column=1).coordinate}, fonte atual: {second_row_name} - fonte correta: Nunito Sans')
+    elif second_row_size != 14:
+        print(f'Erro de tamanho de fonte: {sheet.cell(row=1 + 1, column=1).coordinate}, tamanho atual: {second_row_size} - tamanho correto: 11.0')
+    elif second_row_height != 17.25:
+        print(f'Erro de altura de linha: {sheet.cell(row=1 + 1, column=1).coordinate}, altura atual: {second_row_height} - altura correta: 18.0')
+    elif second_row_bold == True:
+        print(f'Erro de negrito: {sheet.cell(row=1 + 1, column=1).coordinate}, negrito atual: {second_row_bold} - negrito correto: False')
+    else:
+        pass
+
+    if third_row_name == 'Nunito Sans' and third_row_size == 9 and third_row_height == 15 and third_row_bold != True:
+        pass
+    elif third_row_name != 'Nunito Sans':
+        print(f'Erro de fonte: {sheet.cell(row=1 + 2, column=1).coordinate}, fonte atual: {third_row_name} - fonte correta: Nunito Sans')
+    elif third_row_size != 9:
+        print(f'Erro de tamanho de fonte: {sheet.cell(row=1 + 2, column=1).coordinate}, tamanho atual: {third_row_size} - tamanho correto: 11.0')
+    elif third_row_height != 15:
+        print(f'Erro de altura de linha: {sheet.cell(row=1 + 2, column=1).coordinate}, altura atual: {third_row_height} - altura correta: 18.0')
+    elif third_row_bold == True:
+        print(f'Erro de negrito: {sheet.cell(row=1 + 2, column=1).coordinate}, negrito atual: {third_row_bold} - negrito correto: False')
+    else:
+        pass
+
+    if fourth_row_name == 'Nunito Sans' and fourth_row_size == 22 and fourth_row_height == 39 and fourth_row_bold == True:
+        pass
+    elif fourth_row_name != 'Nunito Sans':
+        print(f'Erro de fonte: {sheet.cell(row=1 + 3, column=1).coordinate}, fonte atual: {fourth_row_name} - fonte correta: Nunito Sans')
+    elif fourth_row_size != 22:
+        print(f'Erro de tamanho de fonte: {sheet.cell(row=1 + 3, column=1).coordinate}, tamanho atual: {fourth_row_size} - tamanho correto: 22.0')
+    elif fourth_row_height != 39:
+        print(f'Erro de altura de linha: {sheet.cell(row=1 + 3, column=1).coordinate}, altura atual: {fourth_row_height} - altura correta: 39.0')
+    elif fourth_row_bold != True:
+        print(f'Erro de negrito: {sheet.cell(row=1 + 3, column=1).coordinate}, negrito atual: {fourth_row_bold} - negrito correto: True')
+    else:
+        pass
+
+    if fifth_row_name == 'Nunito Sans' and fifth_row_size == 22 and fifth_row_height == 35.25 and fifht_row_bold == True:
+        pass
+    elif fifth_row_name != 'Nunito Sans':
+        print(f'Erro de fonte: {sheet.cell(row=1 + 4, column=1).coordinate}, fonte atual: {fifth_row_name} - fonte correta: Nunito Sans')
+    elif fifth_row_size != 22:
+        print(f'Erro de tamanho de fonte: {sheet.cell(row=1 + 4, column=1).coordinate}, tamanho atual: {fifth_row_size} - tamanho correto: 22.0')
+    elif fifth_row_height != 35.25:
+        print(f'Erro de altura de linha: {sheet.cell(row=1 + 4, column=1).coordinate}, altura atual: {fifth_row_height} - altura correta: 35.25')
+    elif fifht_row_bold != True:
+        print(f'Erro de negrito: {sheet.cell(row=1 + 4, column=1).coordinate}, negrito atual: {fifht_row_bold} - negrito correto: True')
+    else:
+        pass
 
 # workbook.save('certificados-finalizados/Trena a laser.xlsx')
+
+def save_output_to_file(file_path):
+    original_stdout = sys.stdout
+    try:
+        with open(file_path, 'w') as f:
+            sys.stdout = f
+            verify_origin()
+            verify_pattern_alignment()
+            verify_pattern_font()
+            verify_text_font()
+            verify_titles()
+            verify_observations()
+            verify_executer()
+            verify_table_observation()
+            verify_header()
+    finally:
+        sys.stdout = original_stdout
+
+output_file_path = 'output/output.txt'
 
