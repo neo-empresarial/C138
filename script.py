@@ -77,9 +77,6 @@ def scrapper():
 
     df = df.dropna(axis=0, how='all') #Aqui, removemos as linhas que só tem valores nulos
 
-    # df = df[~df[1].astype(str).str.startswith('Método')]
-    # #print(df)
-
     df = df.replace('Medição de', 'Medir', regex=True)
     df = df.replace('Medição por', 'Medir por', regex=True)
     df = df.replace('para Medir', 'de Medir', regex=True)
@@ -88,8 +85,6 @@ def scrapper():
     for i, row in df.iterrows():
         if pd.isna(df.at[i, 'Descrição do serviço']) or row['Descrição do serviço'] == '':
             df.at[i, 'Descrição do serviço'] = df.at[i-1, 'Descrição do serviço']
-
-    # df = df.to_excel('web.xlsx', index=False)
 
     return df
 
@@ -112,8 +107,6 @@ def process_string(string):
 
 last_column = get_last_column(sheet)
 
-#print('--------------------------------------------------')
-
 centro_found = False
 padroes_found = False
 capa_data = []
@@ -133,7 +126,6 @@ for i in range (1, last_row + 1):
         if centro_found and not padroes_found:
             row_values.append(cell_obj.value)
             if len(row_values) == 9:
-                # #print(f'valor da linha {i}: {row_values}')
                 capa_data.append(row_values)
 
     if padroes_found:
@@ -149,12 +141,6 @@ def create_df_capa():
     return df_capa
 
 df_capa = create_df_capa()
-
-#print("Informações da capa:")
-#print(df_capa)
-
-
-#print('--------------------------------------------------')
 
 #Aqui, vamos tentar extrair os as máquinas utilizadas na medição
 
@@ -207,11 +193,6 @@ machines_df = machines_df[machines_df[descricao_column] != '#N/A']
 
 machines_df.columns = ['Descrição do serviço']
 
-#print('Máquinas utilizadas:')
-#print(machines_df)
-
-#print('--------------------------------------------------')
-
 #Nesse bloco de código, fazemos um loop para pegar somente os valores tabelados de medição do certificado
 
 resultados_found = False
@@ -250,7 +231,6 @@ df_dados = df_dados.drop_duplicates().reset_index(drop=True)
 
 new_table_indices = df_dados[df_dados.apply(lambda row: any(cell and str(cell).startswith('Valor') for cell in row.values), axis=1)].index
 
-# Extract tables
 tables = []
 
 for i in range(len(new_table_indices)):
@@ -259,31 +239,16 @@ for i in range(len(new_table_indices)):
     table = df_dados.iloc[start_idx:end_idx, :].reset_index(drop=True)
     tables.append(table)
 
-#print('Dados da medição:')
-#print(df_dados)
-#print(tables)
-
 #O índice dentro do [] indica qual tabela específica vamos printar (em ordem de cima para baixo no documento)
 #Ou seja, tables separa as tabelas que temos dentro do df_dados
 
-#print('--------------------------------------------------')
-
 df_web = scrapper()
-#print('df_web:')
-#print(df_web)
-
-#print('--------------------------------------------------')
 
 # Quando damos um merge() nos dataframes, conseguimos um resultado semelhante ao de um PROCV
 # Ou seja, aqui estamos fazendo um PROCV entre site e máquina, logo temos a regra da máquina utilizada para cada serviço
 
 df_merge = pd.merge(machines_df, df_web, on='Descrição do serviço', how='left')
 df_merge = df_merge.drop_duplicates().reset_index(drop=True)
-
-#print('PROCV entre df_web e machines_df:')
-#print(df_merge)
-
-#print('--------------------------------------------------')
 
 df_capa_merge = df_capa.copy()
 df_web_merge = df_web.copy()
@@ -303,15 +268,12 @@ for i, table in enumerate(tables):
 
 first_column.columns = ['Resultados']
 
-#print(first_column)
-
 last_value = first_column.iloc[-1]
 
 #Temos o maior valor (sempre o mais inferior da tabela), agora vamos usar ele para saber qual regra usar
 
 # Vamos tentar resolver uma questão sobre trabalhos feitos em campo ou em laboratório
 # Imaginamos que, para trabalhos feitos em campo, existe alguma célula com um texto específico
-
 
 df_web_split = df_web.copy()
 
@@ -327,9 +289,7 @@ if 'LOCAL DA CALIBRAÇÃO' in df_capa.iloc[:, 0].astype(str).values:
 else:
     working_df = df_web_lab
 
-
 #Assim, working_df vai sempre armazenar o dataframe correto para utilizarmos no merge()
-
 
 # Vamos partir para o merge() e assim ter as informações de erro
 
@@ -343,7 +303,6 @@ df_merge_service = df_merge_service.dropna(axis=0, how='all')
 df_merge_service = df_merge_service.dropna(axis=1, how='all')
 
 #Vamos para a parte difícil: extrair o intervalo numérico a partir da string
-
 
 df_merge_service['Intervalo'] = df_merge_service.iloc[:, 4].apply(process_string)
 df_merge_service = df_merge_service.dropna(axis=0, how='any')
@@ -359,7 +318,6 @@ def process_cmc_information(cmc_value):
     # Check if it's a distance (type 1)
     distance_match = re.match(r'([\d.,]+)\s*([µm]+)', cmc_value)
     if distance_match:
-        #print('Caso 1 utilizado')
         value = float(distance_match.group(1).replace(',', '.'))
         unit = distance_match.group(2)
         return value, unit
@@ -367,19 +325,16 @@ def process_cmc_information(cmc_value):
     # Check if it's an equation (type 2)
     equation_match = re.match(r'\[([\s\S]+)\]', cmc_value)
     if equation_match:
-        #print('Caso 2 utilizado')
         return equation_match.group(1)
 
     # Check if it's an angle (type 3)
     angle_match = re.match(r'\s*(\d+)\s*\'\'\s*', cmc_value)
     if angle_match:
-        #print('Caso 3 utilizado')
         return float(angle_match.group(1))
 
     # Check if it's a percentage (type 4)
     percentage_match = re.match(r'([\d.,]+)%', cmc_value)
     if percentage_match:
-        #print('Caso 4 utilizado')
         return float(percentage_match.group(1).replace(',', '.')) / 100
 
     # Default case: return the original value
@@ -439,13 +394,11 @@ for i, table in enumerate(tables):
     u_column_index = table.columns[table.iloc[0].astype(str).str.startswith('U')].tolist()
     if u_column_index:
         u_column_index = u_column_index[0]
-        #print(u_column_index)
         break
     
 has_meters = '[m]' in table.iloc[:, u_column_index].values
 has_mm = '[mm]' in table.iloc[:, u_column_index].values
 has_µm = '[µm]' in table.iloc[:, u_column_index].values
-
 
 for i in range(len(tables)):
     table = tables[i]
@@ -589,7 +542,6 @@ def find_excel_row_by_value(sheet, target_value):
 num_rows_painted = 0
 # Iterate through each DataFrame in the list
 for i, table in enumerate(tables):
-    # print(table)
 
     for index, row in table.iterrows():
         # Assume the first column in the table corresponds to the second column in Excel
@@ -597,7 +549,6 @@ for i, table in enumerate(tables):
         if row['Range_Verification'] == True or row['CMC_Verification'] == True:
             target_value = row[0]
             target_value_str = str(target_value).replace('.', ',')
-        # #print(f'Looking for target value: {target_value_str}')
         # Find the row in the Excel file that corresponds to the target value
             excel_row = find_excel_row_by_value(sheet, target_value_str)
 
@@ -619,15 +570,12 @@ for i, table in enumerate(tables):
 
 print(tables)
 
-print('--------------------------------------------------')
-
 def verify_origin():
     standards_df = df_padroes.copy()
     standards_df = standards_df.dropna(axis=1, how='all').reset_index(drop=True)
     standards_df = standards_df.dropna(axis=0, how='all').reset_index(drop=True)
 
     origin_column = standards_df.iloc[:, -2]
-    print(origin_column)
 
     if origin_column[1] == 'LMD':
         print('Erro: O certificado nao e do padrao CERTI')
@@ -655,7 +603,6 @@ def verify_pattern_alignment():
                 alignment = cell.alignment
                 horizontal_alignment = alignment.horizontal
                 vertical_alignment = alignment.vertical
-                # print(f"Cell {cell.coordinate}: Horizontal: {horizontal_alignment}, Vertical: {vertical_alignment}, Content: {cell.value}")
                 if horizontal_alignment == vertical_alignment:
                     pass
                 else:
