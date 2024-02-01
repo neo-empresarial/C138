@@ -723,17 +723,51 @@ print(tables)
 
 print('--------------------------------------------------')
 
-standards_df = df_padroes.copy()
-standards_df = standards_df.dropna(axis=1, how='all').reset_index(drop=True)
-standards_df = standards_df.dropna(axis=0, how='all').reset_index(drop=True)
+def verify_origin():
+    standards_df = df_padroes.copy()
+    standards_df = standards_df.dropna(axis=1, how='all').reset_index(drop=True)
+    standards_df = standards_df.dropna(axis=0, how='all').reset_index(drop=True)
 
-origin_column = standards_df.iloc[:, -2]
-print(origin_column)
+    origin_column = standards_df.iloc[:, -2]
+    print(origin_column)
 
-if origin_column[1] != 'CERTI':
-    print('Erro: O certificado não é do padrão CERTI')
-else:
-    pass
+    if origin_column[1] == 'LMD':
+        print('Erro: O certificado não é do padrão CERTI')
+    else:
+        print('O certificado é do padrão CERTI')
+
+def verify_pattern_alignment():
+    start_row = None
+    end_row = None
+
+    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
+        for cell in row:
+            if cell.value == 'Padrões utilizados':
+                start_row = cell.row + 1  # Start from the next row
+            elif cell.value == 'Procedimento de calibração':
+                end_row = cell.row - 1  # End at the previous row
+                break
+
+    # Check alignment and content for each cell in the range
+    for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
+        for cell in row:
+            # Check if the cell is not empty
+            if cell.value is not None:
+                # Get alignment properties
+                alignment = cell.alignment
+                horizontal_alignment = alignment.horizontal
+                vertical_alignment = alignment.vertical
+                # print(f"Cell {cell.coordinate}: Horizontal: {horizontal_alignment}, Vertical: {vertical_alignment}, Content: {cell.value}")
+                if horizontal_alignment == vertical_alignment:
+                    pass
+                else:
+                    print(f'Erro de alinhamento: {cell.coordinate}')
+
+verify_origin()
+verify_pattern_alignment()
+
+
+
 
 
 
