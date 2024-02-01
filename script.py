@@ -10,6 +10,7 @@ from lxml import html
 import re
 import ast
 from openpyxl.styles import PatternFill
+import numpy as np
 
 workbook = openpyxl.load_workbook('certificados.xlsx/Trena a laser.xlsx', data_only=True)
 sheet = workbook.active
@@ -202,6 +203,7 @@ machines_df = machines_df.dropna(how='all', inplace=False)
 machines_df = machines_df.drop_duplicates().reset_index(drop=True)
 
 machines_df = machines_df[machines_df[descricao_column] != '#N/A']
+
 machines_df.columns = ['Descrição do serviço']
 
 #print('Máquinas utilizadas:')
@@ -591,13 +593,6 @@ for i, table in enumerate(tables):
     tables[i].iloc[:, u_column_index] = table.iloc[:, u_column_index].apply(convert_to_float)
 
 
-
-#print(tables)
-
-#print('--------------------------------------------------')
-
-#Vamos comparar a nossa coluna CMC_Value com os valores de U
-
 new_column_name = 'U'
 for i in range(len(tables)):
     tables[i].columns.values[u_column_index] = new_column_name
@@ -607,20 +602,52 @@ for i in range(len(tables)):
     table['CMC_Value'] = table['CMC_Value'].replace('', None)
     table['CMC_Verification'] = None
     table['Range_Verification'] = None
+    table['Correction_Verification'] = None
 
-#print(tables)
+search_condition = (df_capa[0] == 'RESOLUÇÃO')
+result = df_capa.loc[search_condition]
 
-# Compare the specified columns for each DataFr
+resolucao_value = result.iloc[0, 1]
 
-#print( '--------------------------------------------------')
+resolucao_value = resolucao_value.split()[0]
+resolucao_value = resolucao_value.replace(',', '.')
+resolucao_value = float(resolucao_value) * 3
+resolucao_negative_value = -resolucao_value
+
+for i, table in enumerate(tables):
+    for index, row in table.iterrows():
+        correction_column_value = row.iloc[2]
+
+        # Check if the value is not None and not NaN
+        if pd.notna(correction_column_value) and correction_column_value != 'Correção':
+            
+            if type(correction_column_value) == str:
+                correction_column_value = pd.to_numeric(
+                    correction_column_value.replace(',', '.'),
+                    errors='coerce'
+                    )
+            else:
+                pass
+            
+            if pd.notna(correction_column_value):
+
+                if correction_column_value < resolucao_negative_value or correction_column_value > resolucao_value:
+                    table.at[index, 'Correction_Verification'] = True
+        
+            if pd.notna(correction_column_value):  # Check again after conversion
+                
+                if correction_column_value < resolucao_negative_value or correction_column_value > resolucao_value:
+
+                    table.at[index, 'Correction_Verification'] = True
+        else:
+            pass
+
 error_ocurred = False
 
 for i, table in enumerate(tables):
     for index, row in table.iterrows():
         u_column_value = row['U']
-        # #print(type(u_column_value))
         cmc_value = row['CMC_Value']
-        # #print(type(cmc_value))
 
         if pd.notna(cmc_value) and pd.notna(u_column_value):
             if u_column_value >= cmc_value:
@@ -636,6 +663,8 @@ for i, table in enumerate(tables):
 #print('--------------------------------------------------')
 
 #Vamos tentar partir para a última parte do projeto, pintar as células do Excel baseado nos outputs que obtivemos
+
+# print(resolucao_value)
 
 def find_excel_row_by_value(sheet, target_value):
     max_row = sheet.max_row
@@ -657,7 +686,7 @@ def find_excel_row_by_value(sheet, target_value):
 num_rows_painted = 0
 # Iterate through each DataFrame in the list
 for i, table in enumerate(tables):
-    print(table)
+    # print(table)
 
     for index, row in table.iterrows():
         # Assume the first column in the table corresponds to the second column in Excel
@@ -669,7 +698,7 @@ for i, table in enumerate(tables):
         # Find the row in the Excel file that corresponds to the target value
             excel_row = find_excel_row_by_value(sheet, target_value_str)
 
-            if excel_row is not None and (row['Range_Verification'] or row['CMC_Verification']) == True:
+            if excel_row is not None and (row['Range_Verification'] or row['CMC_Verification'] or row['Correction_Verification']) == True:
             # Iterate through columns in the DataFrame
                 for col_num, value in enumerate(row):
                 # Assuming you want to color cells starting from the second column
@@ -686,5 +715,28 @@ for i, table in enumerate(tables):
             pass
         
 # Save the changes to the Excel file
-workbook.save('certificados-finalizados/Trena a laser.xlsx')
-print(f'Finished painting {num_rows_painted} rows in the Excel file')
+
+# print(f'Finished painting {num_rows_painted} rows in the Excel file'
+
+
+print(tables)
+
+print('--------------------------------------------------')
+
+standards_df = df_padroes.copy()
+standards_df = standards_df.dropna(axis=1, how='all').reset_index(drop=True)
+standards_df = standards_df.dropna(axis=0, how='all').reset_index(drop=True)
+
+origin_column = standards_df.iloc[:, -2]
+print(origin_column)
+
+if origin_column[1] != 'CERTI':
+    print('Erro: O certificado não é do padrão CERTI')
+else:
+    pass
+
+
+
+
+# workbook.save('certificados-finalizados/Trena a laser.xlsx')
+
