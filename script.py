@@ -509,8 +509,6 @@ else:
 
 error_ocurred = False
 
-print(tables)
-print(u_column_index)
 for i, table in enumerate(tables):
     for index, row in table.iterrows():
         u_column_value = row[u_column_index]
@@ -569,7 +567,6 @@ for i, table in enumerate(tables):
         else:
             pass
 
-print(tables)
 
 def verify_origin():
     standards_df = df_padroes.copy()
@@ -896,9 +893,36 @@ def verify_procedure():
     else:
         print('Erro: Procedimento de calibracao nao encontrado (possível procedimento fantasma)')
 
+def verify_Veff():
+    for i, table in enumerate(tables):
+        for index, row in table.iterrows():
+            k_column_index = row[row == 'k'].index
+            neff_column_index = row[row == 'neff'].index
+            if not k_column_index.empty and not neff_column_index.empty:
+                k_column_index = k_column_index.values
+                neff_column_index = neff_column_index.values
+
+                k_column_index = k_column_index[0]
+                neff_column_index = neff_column_index[0]
+
+                k_column = table.iloc[:, k_column_index]
+                neff_column = table.iloc[:, neff_column_index]
+
+                df = pd.DataFrame({'k': k_column, 'neff': neff_column})
+                df = df.dropna(axis=0, how='any')
+                df = df[df['k'] != 'k']
+                df['Verification'] = None
+
+                for index, row in df.iterrows():
+                    if row['k'] == 2:
+                        if row['neff'] == 'Infinito' or row['neff'] == 'infinito':
+                            pass
+                        else:
+                            print('Erro: neff diferente de infinito para k = 2')
+                    else:
+                        pass
 
 # workbook.save('certificados-finalizados/Trena a laser.xlsx')
-
 
 def save_output_to_file(file_path):
     original_stdout = sys.stdout
@@ -915,6 +939,7 @@ def save_output_to_file(file_path):
             verify_table_observation()
             verify_header()
             verify_procedure()
+            verify_Veff()
 
     finally:
         sys.stdout = original_stdout
