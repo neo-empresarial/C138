@@ -13,7 +13,7 @@ from openpyxl.styles import PatternFill
 import numpy as np
 import sys
 
-workbook = openpyxl.load_workbook('certificados.xlsx/Trena a laser.xlsx', data_only=True)
+workbook = openpyxl.load_workbook('certificados.xlsx/CertificadoTeste.xlsx', data_only=True)
 sheet = workbook.active
 
 # Get the max row count
@@ -586,11 +586,12 @@ def verify_pattern_alignment():
 
     for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
         for cell in row:
-            if cell.value == 'Padrões utilizados':
-                start_row = cell.row + 1  # Start from the next row
-            elif cell.value == 'Procedimento de calibração':
-                end_row = cell.row - 1  # End at the previous row
-                break
+            if cell.value is not None:
+                if cell.value == 'Padrões utilizados':
+                    start_row = cell.row + 1  # Start from the next row
+                elif cell.value.startswith('Procedimento de'):
+                    end_row = cell.row - 1  # End at the previous row
+                    break
 
     # Check alignment and content for each cell in the range
     for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
@@ -601,10 +602,13 @@ def verify_pattern_alignment():
                 alignment = cell.alignment
                 horizontal_alignment = alignment.horizontal
                 vertical_alignment = alignment.vertical
-                if horizontal_alignment == vertical_alignment:
-                    pass
+                if horizontal_alignment == 'left' or horizontal_alignment == None:
+                    if vertical_alignment == 'center' or vertical_alignment == None:
+                        pass
+                    else:
+                        print(f'Erro de alinhamento vertical: {cell.coordinate}')
                 else:
-                    print(f'Erro de alinhamento: {cell.coordinate}')
+                    print(f'Erro de alinhamento horizontal: {cell.coordinate}')
 
 def verify_pattern_font():
     start_row = None
@@ -922,6 +926,45 @@ def verify_Veff():
                     else:
                         pass
 
+def verify_procedure_numbers():
+    start_row = None
+    end_row = None
+
+    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
+        for cell in row:
+            if cell.value is not None:
+                if cell.value.startswith('Procedimento de'):
+                    start_row = cell.row + 1
+                elif cell.value == 'Resultados':
+                    end_row = cell.row - 1
+                    break
+    cell_value = []
+    number = []
+    for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
+        for cell in row:
+            # Check if the cell is not empty
+            if cell.value is not None:
+                cell_value.append(cell.value)
+    for words in cell_value:
+        words = words.split()
+        for word in words:
+            numbers = [word for word in words if word.isdigit() or (word.isnumeric() if word[0].isdigit() else False)]
+            number.append(numbers)
+    print(number)
+
+
+verify_origin()
+verify_pattern_alignment()
+# verify_pattern_font()
+# verify_text_font()
+# verify_titles()
+# verify_observations()
+# verify_executer()
+# verify_table_observation()
+# verify_header()
+# verify_procedure()
+# verify_Veff()
+
 # workbook.save('certificados-finalizados/Trena a laser.xlsx')
 
 def save_output_to_file(file_path):
@@ -945,5 +988,3 @@ def save_output_to_file(file_path):
         sys.stdout = original_stdout
 
 output_file_path = 'output/output.txt'
-
-## Task para 02/02 -> Focar na parte de DB, tentar avançar em algumas pesquisas do SQL 
