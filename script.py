@@ -304,6 +304,7 @@ df_merge_service = df_merge_service.dropna(axis=1, how='all')
 
 #Vamos para a parte difícil: extrair o intervalo numérico a partir da string
 
+
 df_merge_service['Intervalo'] = df_merge_service.iloc[:, 4].apply(process_string)
 df_merge_service = df_merge_service.dropna(axis=0, how='any')
 df_merge_service = df_merge_service.dropna(axis=1, how='any')  
@@ -458,11 +459,6 @@ for i in range(len(tables)):
 for i, table in enumerate(tables):
     tables[i].iloc[:, u_column_index] = table.iloc[:, u_column_index].apply(convert_to_float)
 
-
-new_column_name = 'U'
-for i in range(len(tables)):
-    tables[i].columns.values[u_column_index] = new_column_name
-
 for i in range(len(tables)):
     table = tables[i]
     table['CMC_Value'] = table['CMC_Value'].replace('', None)
@@ -473,46 +469,51 @@ for i in range(len(tables)):
 search_condition = (df_capa[0] == 'RESOLUÇÃO')
 result = df_capa.loc[search_condition]
 
-resolucao_value = result.iloc[0, 1]
+if not result.empty:
+    resolucao_value = result.iloc[0, 1]
 
-resolucao_value = resolucao_value.split()[0]
-resolucao_value = resolucao_value.replace(',', '.')
-resolucao_value = float(resolucao_value) * 3
-resolucao_negative_value = -resolucao_value
+    resolucao_value = resolucao_value.split()[0]
+    resolucao_value = resolucao_value.replace(',', '.')
+    resolucao_value = float(resolucao_value) * 3
+    resolucao_negative_value = -resolucao_value
 
-for i, table in enumerate(tables):
-    for index, row in table.iterrows():
-        correction_column_value = row.iloc[2]
+    for i, table in enumerate(tables):
+        for index, row in table.iterrows():
+            correction_column_value = row.iloc[2]
 
-        # Check if the value is not None and not NaN
-        if pd.notna(correction_column_value) and correction_column_value != 'Correção':
+            # Check if the value is not None and not NaN
+            if pd.notna(correction_column_value) and correction_column_value != 'Correção':
+                
+                if type(correction_column_value) == str:
+                    correction_column_value = pd.to_numeric(
+                        correction_column_value.replace(',', '.'),
+                        errors='coerce'
+                        )
+                else:
+                    pass
+                
+                if pd.notna(correction_column_value):
+
+                    if correction_column_value < resolucao_negative_value or correction_column_value > resolucao_value:
+                        table.at[index, 'Correction_Verification'] = True
             
-            if type(correction_column_value) == str:
-                correction_column_value = pd.to_numeric(
-                    correction_column_value.replace(',', '.'),
-                    errors='coerce'
-                    )
+                if pd.notna(correction_column_value):  # Check again after conversion
+                    
+                    if correction_column_value < resolucao_negative_value or correction_column_value > resolucao_value:
+
+                        table.at[index, 'Correction_Verification'] = True
             else:
                 pass
-            
-            if pd.notna(correction_column_value):
-
-                if correction_column_value < resolucao_negative_value or correction_column_value > resolucao_value:
-                    table.at[index, 'Correction_Verification'] = True
-        
-            if pd.notna(correction_column_value):  # Check again after conversion
-                
-                if correction_column_value < resolucao_negative_value or correction_column_value > resolucao_value:
-
-                    table.at[index, 'Correction_Verification'] = True
-        else:
-            pass
+else:
+    pass
 
 error_ocurred = False
 
+print(tables)
+print(u_column_index)
 for i, table in enumerate(tables):
     for index, row in table.iterrows():
-        u_column_value = row['U']
+        u_column_value = row[u_column_index]
         cmc_value = row['CMC_Value']
 
         if pd.notna(cmc_value) and pd.notna(u_column_value):
@@ -533,7 +534,7 @@ def find_excel_row_by_value(sheet, target_value):
 
         # Check if the cell contains the target value
         if cell_obj.value == target_value:
-            print(f'Match found at row {i}')
+            # print(f'Match found at row {i}')
             return i  # Return the row number if found
 
     return None  # Return None if not found
@@ -862,7 +863,22 @@ def verify_header():
     else:
         pass
 
+def verify_ghost_procedure():
+    start_row = None
+    end_row = None
+
+    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
+        for cell in row:
+            if cell.value == 'Procedimento de calibração':
+                start_row = cell.row + 1
+            elif cell.value == 'Resultados':
+                end_row = cell.row - 1
+                break
+        print(start_row, end_row)
+
+
 # workbook.save('certificados-finalizados/Trena a laser.xlsx')
+
 
 def save_output_to_file(file_path):
     original_stdout = sys.stdout
@@ -883,3 +899,4 @@ def save_output_to_file(file_path):
 
 output_file_path = 'output/output.txt'
 
+## Task para 02/02 -> Focar na parte de DB, tentar avançar em algumas pesquisas do SQL 
