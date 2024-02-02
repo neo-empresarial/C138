@@ -863,7 +863,7 @@ def verify_header():
     else:
         pass
 
-def verify_ghost_procedure():
+def verify_procedure():
     start_row = None
     end_row = None
 
@@ -874,7 +874,27 @@ def verify_ghost_procedure():
             elif cell.value == 'Resultados':
                 end_row = cell.row - 1
                 break
-        print(start_row, end_row)
+    cell_value = []
+    for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
+        for cell in row:
+            # Check if the cell is not empty
+            if cell.value is not None:
+                cell_value.append(cell.value)
+    words = cell_value[0].split()
+    cmi_word = next((word for word in words if word.startswith('CMI')), None)
+    if cmi_word is not None:
+        cmi_word_parts = cmi_word.split('-')
+        cmi_word_parts_number = cmi_word_parts[-1]
+        if len(cmi_word_parts_number) > 3:
+            cmi_word_parts_number = cmi_word_parts_number[:3]
+        else:
+            pass
+        if cmi_word_parts_number == '000':
+            print('Erro: Procedimento de calibracao zerado')
+        else:
+            pass
+    else:
+        print('Erro: Procedimento de calibracao nao encontrado (possível procedimento fantasma)')
 
 
 # workbook.save('certificados-finalizados/Trena a laser.xlsx')
@@ -894,6 +914,8 @@ def save_output_to_file(file_path):
             verify_executer()
             verify_table_observation()
             verify_header()
+            verify_procedure()
+
     finally:
         sys.stdout = original_stdout
 
