@@ -52,6 +52,7 @@ def main():
         global start_row
         global tables
         global df_padroes
+        print('Erros relacionados as tabelas de medição:')
         def scrapper():
             #Usando o URL apresentado no documento de calibração
             url = 'http://www.inmetro.gov.br/laboratorios/rbc/detalhe_laboratorio.asp?num_certificado=34&situacao=AT&area=DIMENSIONAL'
@@ -558,7 +559,7 @@ def main():
 
             return None  # Return None if not found
         
-        num_rows_painted = 0
+
         # Iterate through each DataFrame in the list
         for i, table in enumerate(tables):
 
@@ -566,26 +567,24 @@ def main():
                 # Assume the first column in the table corresponds to the second column in Excel
 
                 if row['Range_Verification'] == True or row['CMC_Verification'] == True:
-                    target_value = row[0]
-                    target_value_str = str(target_value).replace('.', ',')
+                    target_value_range = row[0]
+                    target_value_cmc = row[3]
+                    target_value_str = str(target_value_range).replace('.', ',')
                 # Find the row in the Excel file that corresponds to the target value
                     excel_row = find_excel_row_by_value(sheet, target_value_str)
+                    # print(excel_row)
 
-                    if excel_row is not None and (row['Range_Verification'] or row['CMC_Verification'] or row['Correction_Verification']) == True:
-                    # Iterate through columns in the DataFrame
-                        for col_num, value in enumerate(row):
-                        # Assuming you want to color cells starting from the second column
-                            cell_to_paint = sheet.cell(row=excel_row, column=col_num + 1)
-
-                        # Set the fill color for the cell
-                            fill_color = 'EA4335'  # Specify the color in RGB format (here, red)
-                            fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
-                            cell_to_paint.fill = fill
-                
-                    num_rows_painted += 1
-                    
+                    if excel_row is not None:
+                        if row['Range_Verification'] == True:
+                            print(f'Erro de range na linha {excel_row} - {target_value_str} - valor fora do range indicado pela RBC')
+                        elif row['CMC_Verification'] == True:
+                            print(f'Erro de CMC na linha {excel_row} - {target_value_cmc} - valor fora do CMC indicado pela RBC')
+                    else:
+                        pass
+                        
                 else:
                     pass
+        print('-------------------')
     except Exception as e:
         print(f'Erro: {e}')
         pass
@@ -593,6 +592,7 @@ def main():
 main()
 
 def verify_origin():
+    print('Erros relacionados a formatação do documento:')
     standards_df = df_padroes.copy()
     standards_df = standards_df.dropna(axis=1, how='all').reset_index(drop=True)
     standards_df = standards_df.dropna(axis=0, how='all').reset_index(drop=True)
