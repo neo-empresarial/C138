@@ -652,7 +652,16 @@ def main():
 
 main() #Calling the main function
 
-def verify_origin():
+def verify_pattern_origin():
+    '''
+    Function to verify the origin of a service.
+
+    The origin is listed at the 'Padrões utilizados' section of the document.
+
+    If the value is CERTI, the function returns a message saying that the certificate is from CERTI.
+
+    If the value is LMD, the function returns a message saying that the certificate is not from CERTI (that's a problem).
+    '''
     print('Erros relacionados a formatação do documento:')
     standards_df = df_padroes.copy()
     standards_df = standards_df.dropna(axis=1, how='all').reset_index(drop=True)
@@ -666,6 +675,9 @@ def verify_origin():
         print('O certificado e do padrao CERTI')
 
 def verify_pattern_alignment():
+    '''
+    Function to verify the text alignment of the 'Padrões utilizados' section of the document.
+    '''
     start_row = None
     end_row = None
 
@@ -696,6 +708,9 @@ def verify_pattern_alignment():
                     print(f'Erro de alinhamento horizontal: {cell.coordinate}')
 
 def verify_pattern_font():
+    '''
+    Function to verify the font of the 'Padrões utilizados' section of the document.
+    '''
     start_row = None
     end_row = None
 
@@ -727,7 +742,12 @@ def verify_pattern_font():
                     print(f'Erro de fonte: {cell.coordinate}, fonte atual: {font_name} - fonte correta: Nunito Sans, tamanho atual: {font_size} - tamanho correto: 9')
 
 
-def verify_text_font():
+def verify_procedure_text_font():
+    '''
+    Function to verify the font of the text in the 'Procedimento de calibração' section of the document.
+
+    All the cells that contain text at this section should have the font 'Nunito Sans' and the size 10.
+    '''
     start_row = None
     end_row = None
 
@@ -752,6 +772,16 @@ def verify_text_font():
                     print(f'Erro de fonte: {cell.coordinate}, fonte atual: {font_name} - fonte correta: Nunito Sans, tamanho atual: {font_size} - tamanho correto: 10')
 
 def verify_titles():
+    '''
+    Function to verify the font of all titles in the document.
+
+    The titles are:
+    - Padrões utilizados
+    - Procedimento de calibração
+    - Resultados
+    - Observações
+
+    '''
     titles = []
     for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
         for cell in row:
@@ -780,7 +810,12 @@ def verify_titles():
         else:
             pass
 
-def verify_observations():
+def verify_observations_text():
+    '''
+    Function to verify the font of the text in the 'Observações' section of the document.
+
+    All the cells that contain text at this section should have the font 'Nunito Sans' and the size 9.
+    '''
     start_row = None
     end_row = get_last_row(sheet)
 
@@ -802,7 +837,12 @@ def verify_observations():
                     print(f'Erro nas observacoes: {cell.coordinate}, fonte atual: {font_name} - fonte correta: Nunito Sans, tamanho atual: {font_size} - tamanho correto: 9.0')
 
 
-def verify_executer():
+def verify_executer_font():
+    '''
+    Function to verify the font of the text in the 'Executor' section of the document.
+
+    All the cells that contain text at this section should have the font 'Nunito Sans', the size 10 and bold.
+    '''
     start_row = None
     end_row = None
 
@@ -832,7 +872,12 @@ def verify_executer():
                     else:
                         pass
 
-def verify_table_observation():
+def verify_table_observation_font():
+    '''
+    Function to verify the font of the text in the 'Observações' section of the document.
+
+    All the cells that contain text at this section should have the font 'Nunito Sans' and the size 8.
+    '''
     start_row = None
     end_row = None
 
@@ -860,6 +905,13 @@ def verify_table_observation():
                         pass
 
 def verify_header():
+    '''
+    Function to verify the font of the header of the document.
+
+    The header is the first 5 rows of the document.
+
+    For each row of header, a different font and size is expected.
+    '''
     start_row_height = sheet.row_dimensions[1].height
     second_row_height = sheet.row_dimensions[2].height
     third_row_height = sheet.row_dimensions[3].height
@@ -951,7 +1003,18 @@ def verify_header():
     else:
         pass
 
-def verify_procedure():
+def verify_intern_procedure_code():
+    '''
+    Function to verify the internal procedure code of the document.
+
+    The internal procedure code is the CMI number that is present in the 'Procedimento de calibração' section of the document.
+
+    The CMI number is expected to be in the format 'CMI-XXX', where 'XXX' is a number.
+
+    If the CMI number is 'CMI-000', the function returns an error message.
+
+    If the CMI number is not found, the function returns an error message.
+    '''
     start_row = None
     end_row = None
 
@@ -985,6 +1048,13 @@ def verify_procedure():
         print('Erro: Procedimento de calibracao nao encontrado (possível procedimento fantasma)')
 
 def verify_Veff():
+    '''
+    Function to verify the Veff value of the document.
+
+    The Veff value is present in the 'Resultados' section of the document.
+
+    If the Veff is 'Infinito', the k value need to be 2.
+    '''
     for i, table in enumerate(tables):
         for index, row in table.iterrows():
             k_column_index = row[row == 'k'].index
@@ -1013,94 +1083,29 @@ def verify_Veff():
                     else:
                         pass
 
-## Função incabada -> não sei o quão aplicável é o que estou tentando fazer aqui, já que preciso do número e da unidade
-def verify_procedure_numbers():
-    start_row = None
-    end_row = None
-
-    for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
-        for cell in row:
-            if cell.value is not None:
-                if cell.value.startswith('Procedimento de'):
-                    start_row = cell.row + 1
-                elif cell.value == 'Resultados':
-                    end_row = cell.row - 1
-                    break
-    cell_value = []
-    number = []
-    for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
-        for cell in row:
-            # Check if the cell is not empty
-            if cell.value is not None:
-                cell_value.append(cell.value)
-    for words in cell_value:
-        words = words.split()
-        for word in words:
-            numbers = [word for word in words if word.isdigit() or (word.isnumeric() if word[0].isdigit() else False)]
-            number.append(numbers)
-    print(number)
-
-# Vamos tentar um aproach diferente: Já que achar a letra grega não é possível, vamos de cara corrigir todas as células 'neff', estejam elas certas ou não
-# A ideia é que, se a célula estiver correta, a correção não vai alterar nada. Se estiver errada, a correção vai corrigir
-
-
-# def is_greek_letter(cell_value):
-#     for char in cell_value:
-#         print(type(char))
-#         if 'GREEK' in unicodedata.name(char, ''):
-#             return True
-#     print(f'Iteração da função: {cell_value}')
-#     return False
-
-
-# def verify_greek_letters():
-#     start_row = None
-#     end_row = None
-
-#     for row in sheet.iter_rows(min_row=1, max_col=1, max_row=sheet.max_row):
-#         for cell in row:
-#             if cell.value is not None:
-#                 if cell.value.startswith('Resultados'):
-#                     start_row = cell.row + 1
-#                 elif cell.value == 'Observações':
-#                     end_row = cell.row - 1
-#                     break
-    
-
-#     for row in sheet.iter_rows(min_row=start_row, max_row=end_row):
-#         for cell in row:
-#             if cell.value is not None:
-#                 if cell.value == 'neff':
-#                     cell_rt = Text()
-#                     cell_rt.append('n', style='danger')
-#                     cell_rt.append('eff', style='bold underline')
-#                     print(cell_rt)
-
-#                     cell_value = str(cell_rt)
-#                     cell.value = cell_value                    
-                    
-    
-#     workbook.save('certificados-finalizados/Trena a laser.xlsx')
-
-    
 # workbook.save('certificados-finalizados/Trena a laser.xlsx')
 
 def save_output_to_file(file_path):
+    '''
+    Function to save the output of the script to a file.
+
+    The file is saved at the 'output' folder.
+    '''
     original_stdout = sys.stdout
     try:
         with open(file_path, 'w') as f:
             sys.stdout = f
             main()
-            verify_origin()
+            verify_pattern_origin()
             verify_pattern_alignment()
             verify_pattern_font()
-            verify_text_font()
+            verify_procedure_text_font()
             verify_titles()
-            verify_observations()
-            verify_executer()
-            verify_table_observation()
+            verify_observations_text()
+            verify_executer_font()
+            verify_table_observation_font()
             verify_header()
-            verify_procedure()
+            verify_intern_procedure_code()
             verify_Veff()
 
     finally:
