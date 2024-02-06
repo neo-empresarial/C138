@@ -16,17 +16,22 @@ import unicodedata
 from rich.console import Console
 from rich.text import Text
 
+#Loading the workbook (Excel file)
 workbook = openpyxl.load_workbook('certificados.xlsx/Trena a laser.xlsx', data_only=True)
+
+#Loading the worksheet (Excel file that we gonna work with)
 sheet = workbook.active
 
-# Get the max row count
+# Get the max row count of the worksheet
 max_row = sheet.max_row
 
-# Get the max column count
+# Get the max column count of the worksheet
 max_column = sheet.max_column
 
-#Função para pegar a última linha com conteúdo
 def get_last_row(sheet):
+    '''
+    Function to get the last line with content on the Excel file
+    '''
     for i in range(max_row, 0, -1):
         row_values = [cell.value for cell in sheet[i]]
 
@@ -35,10 +40,13 @@ def get_last_row(sheet):
         
     return None
 
+#Activating the function and storing the result in a variable (last_row)
 last_row = get_last_row(sheet)
 
-#Função para pegar a última coluna com conteúdo
-def get_last_column(sheet):	
+def get_last_column(sheet):
+    '''
+    Function to get the last column with content on the Excel file
+    '''	
     for i in range(max_column, 0, -1):
         column_values = [cell.value for cell in sheet[i]]
 
@@ -47,63 +55,98 @@ def get_last_column(sheet):
         
     return None
 
+#Activating the function and storing the result in a variable (last_column)
+last_column = get_last_column(sheet)
+
+
+#Starting to create the main function
 def main():
+    ''' Function to analyze all data from tables
+
+    Inner Functions:
+    - scrapper()
+    - convert_to_float()
+    - process_string()
+    - create_df_capa()
+    - process_cmc_information()
+    - convert_to_meters()
+    - convert_to_mm()
+    - convert_to_µm()
+    - find_excel_row_by_value()
+
+    Returns:
+    - tables
+    '''
     try:
+        #Declaring the global variables (to use in other functions)
         global start_row
         global tables
         global df_padroes
         print('Erros relacionados as tabelas de medição:')
+
         def scrapper():
-            #Usando o URL apresentado no documento de calibração
+            '''
+            Function to scrape all data from RBC website
+            '''
+            #URL that we gonna scrape
             url = 'http://www.inmetro.gov.br/laboratorios/rbc/detalhe_laboratorio.asp?num_certificado=34&situacao=AT&area=DIMENSIONAL'
 
+            #Requesting the URL
             response = requests.get(url)
 
+            #Getting the HTML content
             html_content = response.content
 
-            #Usando o BeautifulSoup para fazer o parse do HTML
+            #Using BeatifulSoup to parse the HTML
             soup = BeautifulSoup(html_content, 'html.parser')
 
-            #Aqui, juntamos o BeautifulSoup com o lxml para fazer o parse do HTML, já que o lxml aceita XPATH
+            #Here, we use the lxml to parse the HTML (it's a better parser than the default one from BeautifulSoup)
             html_tree = html.fromstring(str(soup))
 
-            #Aqui, usamos o XPATH para pegar a tabela que queremos
+            #Using XPATH to find the table that we want
             table_rows = html_tree.xpath('//table[4]/tr')
 
-            #Aqui, criamos uma lista vazia para armazenar os dados da tabela
+            #Creating a list to store the data
             rows_data = []
 
-            #Aqui, iteramos sobre as linhas da tabela e pegamos o texto de cada célula
+            #Iterating through the rows of the table and getting the data (text format)
             for row in table_rows:
                 cells = row.xpath('.//td|.//th')
                 row_data = [cell.text_content().strip() for cell in cells]
                 rows_data.append(row_data)
 
-            #Aqui, criamos um DataFrame do Pandas com os dados da tabela
+            #Creating a DataFrame to store the data (df)
             df = pd.DataFrame(rows_data, columns = None, index = None) 
 
-            df = df.dropna(axis=1, how='all') #Aqui, removemos as colunas que só tem valores nulos
+            #Dropping rows and columns with all NaN values
+            df = df.dropna(axis=1, how='all')
+            df = df.dropna(axis=0, how='all')
 
-            df = df.dropna(axis=0, how='all') #Aqui, removemos as linhas que só tem valores nulos
-
+            #Changing values from df to match them with the information we gonna get at the Excel file
             df = df.replace('Medição de', 'Medir', regex=True)
             df = df.replace('Medição por', 'Medir por', regex=True)
             df = df.replace('para Medir', 'de Medir', regex=True)
             df = df.replace('Medição', 'Medir', regex=True)
             df.columns = ['Descrição do serviço', 'Parâmetro, Faixa e Método', 'Capacidade de Medição e Calibração (CMC)']
 
+            #Treating data
             for i, row in df.iterrows():
                 if pd.isna(df.at[i, 'Descrição do serviço']) or row['Descrição do serviço'] == '':
                     df.at[i, 'Descrição do serviço'] = df.at[i-1, 'Descrição do serviço']
 
+            #Returning df (that's the output of my scrapper() function)
             return df
 
+        #Here, we gonna list some function to use afterwards
+
+        #Function to convert the values to float (we can apply any time we need it)
         def convert_to_float(value):
             try:
                 return float(value.split()[0].replace(',', '.'))
             except:
                 return value
 
+        #Function to process the string and get the interval
         def process_string(string):
             result = re.findall(r'\d+', string)
 
@@ -115,17 +158,23 @@ def main():
             else:
                 return None
 
-        last_column = get_last_column(sheet)
-
+        #Extracting data from Excel file
+        
+        #Getting the data from the first part of the Excel file (the cover of the document)
         centro_found = False
         padroes_found = False
         capa_data = []
 
+        #Iterating through the rows of the Excel file
         for i in range (1, last_row + 1):
             row_values = []
+            #Iterating through the columns of the Excel file
             for j in range (1, last_column + 1):
+                #Getting the value of the cell and storing on cell_obj (the value of a cell is the content of it)
                 cell_obj = sheet.cell(row = i, column = j)
 
+                #Creating a logic to find the start and finish of the cover of the document
+                #The values of the cells are going to be used as the , knowing that all certificates have the same structure
                 if str(cell_obj.value).startswith('CENTRO'):
                     centro_found = True
                     continue
@@ -133,6 +182,7 @@ def main():
                     padroes_found = True
                     continue
 
+                #Appeding cell values into a list (row_values)
                 if centro_found and not padroes_found:
                     row_values.append(cell_obj.value)
                     if len(row_values) == 9:
@@ -142,6 +192,9 @@ def main():
                 break
 
         def create_df_capa():
+            '''
+            Function to create df_capa, using the capa_data list
+            '''
             df_capa = pd.DataFrame(capa_data)
             df_capa = df_capa.dropna(axis=1, how='all')
             df_capa = df_capa.dropna(axis=0, how='all')
@@ -151,8 +204,8 @@ def main():
             return df_capa
 
         df_capa = create_df_capa()
-
-        #Aqui, vamos tentar extrair os as máquinas utilizadas na medição
+        
+        #Extracting the machines listed on the Excel file
 
         padroes_found = False
         procedimento_found = False
@@ -179,6 +232,7 @@ def main():
             if procedimento_found:
                 break
 
+        #Creating a DataFrame to store the machine data (df_padroes) and treating data
         df_padroes = pd.DataFrame(padroes_data)
         df_padroes = df_padroes.dropna(axis=1, how='all')
 
@@ -201,10 +255,10 @@ def main():
 
         machines_df = machines_df[machines_df[descricao_column] != '#N/A']
 
+        #Naming columns and finalizing the creation machines_df
         machines_df.columns = ['Descrição do serviço']
 
-        #Nesse bloco de código, fazemos um loop para pegar somente os valores tabelados de medição do certificado
-
+        #Extracting the data inside tables on the Excel file
         resultados_found = False
         observacoes_found = False
         data = []
@@ -231,13 +285,14 @@ def main():
             if observacoes_found:
                 break
 
+        #Creating a DataFrame to store the table data (df_dados) and treating data
         df_dados = pd.DataFrame(data)
         df_dados = df_dados.dropna(axis=1, how='all')
         df_dados = df_dados.dropna(axis=0, how='all')
         df_dados = df_dados[~df_dados.apply(lambda row: 'Ocultar' in row.values, axis=1)]
         df_dados = df_dados.drop_duplicates().reset_index(drop=True)
 
-        #Vamos tentar separar as diferentes tabelas que temos dentro do df_dados
+        #Separating the different tables inside the df_dados (the number of tables change according to the document)
 
         new_table_indices = df_dados[df_dados.apply(lambda row: any(cell and str(cell).startswith('Valor') for cell in row.values), axis=1)].index
 
@@ -249,30 +304,30 @@ def main():
             table = df_dados.iloc[start_idx:end_idx, :].reset_index(drop=True)
             tables.append(table)
 
-        #O índice dentro do [] indica qual tabela específica vamos printar (em ordem de cima para baixo no documento)
-        #Ou seja, tables separa as tabelas que temos dentro do df_dados
+        #The tables list is going to store all the tables we have inside the df_dados
 
+        #Calling the scrapper() function and storing the result in a variable (df_web)
         df_web = scrapper()
 
-        # Quando damos um merge() nos dataframes, conseguimos um resultado semelhante ao de um PROCV
-        # Ou seja, aqui estamos fazendo um PROCV entre site e máquina, logo temos a regra da máquina utilizada para cada serviço
+        #Merging the machines_df with df_web (same result as a VLOOKUP in Excel) at df_merge
 
         df_merge = pd.merge(machines_df, df_web, on='Descrição do serviço', how='left')
         df_merge = df_merge.drop_duplicates().reset_index(drop=True)
 
+        #Coping previous DataFrames to use them later
         df_capa_merge = df_capa.copy()
         df_web_merge = df_web.copy()
 
+        #Changing the values of the columns to lowercase, to avoid problems merging the DataFrames
         df_capa_merge[df_capa_merge.columns[1]] = df_capa_merge[df_capa_merge.columns[1]].str.lower()
         df_web_merge[df_web_merge.columns[0]] = df_web_merge[df_web_merge.columns[0]].str.lower()
 
+        #Merging the df_capa_merge with df_web_merge (same result as a VLOOKUP in Excel) at df_service
         df_service = pd.merge(df_capa_merge, df_web_merge, left_on=df_capa_merge.iloc[:, 1], right_on=df_web_merge.iloc[:, 0], how='inner')
         df_service = df_service.drop_duplicates().reset_index(drop=True)
 
-
-
+        #Locating the first column of tables and converting the values to float
         first_column = tables[0].iloc[:, 0]
-            
         for i, table in enumerate(tables):
             tables[i].iloc[:, 0] = table.iloc[:, 0].apply(convert_to_float)
 
@@ -280,49 +335,38 @@ def main():
 
         last_value = first_column.iloc[-1]
 
-        #Temos o maior valor (sempre o mais inferior da tabela), agora vamos usar ele para saber qual regra usar
+        #Creating a logic to separate works done in the field and in the laboratory
+        #The base of the logic is that, at the cover, a cell with the value 'LOCAL DA CALIBRAÇÃO' means that the work was done in the field
 
-        # Vamos tentar resolver uma questão sobre trabalhos feitos em campo ou em laboratório
-        # Imaginamos que, para trabalhos feitos em campo, existe alguma célula com um texto específico
-
+        #Copping the df_web to use it
         df_web_split = df_web.copy()
 
+        #Finding the index of the cell with the value 'LOCAL DA CALIBRAÇÃO'
         indices = df_web_split[df_web_split['Descrição do serviço'] == 'INSTRUMENTOS E GABARITOS DE MEDIÇÃO DE ÂNGULO'].index[1]
 
         df_web_lab = df_web_split.iloc[:indices - 2]
         df_web_field = df_web_split.iloc[indices - 2:]
 
-        #Vamos descobrir se o certificado é de medição em campo ou em laboratório
+        #Finding if the work was done in the field or in the laboratory
 
         if 'LOCAL DA CALIBRAÇÃO' in df_capa.iloc[:, 0].astype(str).values:
             working_df = df_web_field
         else:
             working_df = df_web_lab
 
-        #Assim, working_df vai sempre armazenar o dataframe correto para utilizarmos no merge()
-
-        # Vamos partir para o merge() e assim ter as informações de erro
+        #Merging the df_cap_merge and working_df, to get the values from RBC based on the work that is listed on the Excel file
 
         working_df[working_df.columns[0]] = working_df[working_df.columns[0]].str.lower()
 
-        # print(df_capa_merge)
-        # print(working_df)
-        # working_df = working_df.to_excel('working_df.xlsx')
-
         df_merge_service = pd.merge(df_capa_merge, working_df, left_on=df_capa_merge.iloc[:, 1], right_on=working_df.iloc[:, 0], how='inner')
 
-
-
-
-
+        #Treating data
         df_merge_service = df_merge_service.drop_duplicates().reset_index(drop=True)
         df_merge_service.iloc[:, -1] = df_merge_service.iloc[:, -1].str.replace('*', '')
         df_merge_service = df_merge_service.dropna(axis=0, how='all')
         df_merge_service = df_merge_service.dropna(axis=1, how='all')
 
-        #Vamos para a parte difícil: extrair o intervalo numérico a partir da string
-        # print(df_merge_service)
-
+        #Extracting the numerical range from each line of tables
         try:
             df_merge_service['Intervalo'] = df_merge_service.iloc[:, 4].apply(process_string)
             df_merge_service = df_merge_service.dropna(axis=0, how='any')
@@ -331,11 +375,12 @@ def main():
         except Exception as e:
             print(f'{e}: Não foi possível encontrar a máquina utilizada para o serviço')
 
-        #Agora que temos todas as peças, vamos ao que importa: os cálculos
-        #Queremos pegar cada valor da first_column e ver em qual intervalo ele se encaixa
-        #Depois, vamos pegar o valor de erro e incerteza correspondente
+        #Creating a logic to get each value of the first column, and with that discover the correct numerical range
 
         def process_cmc_information(cmc_value):
+            '''
+            Function to process the CMC information, based on the string format
+            '''
             cmc_value = str(cmc_value).strip()
             
             # Check if it's a distance (type 1)
@@ -363,7 +408,7 @@ def main():
             # Default case: return the original value
             return cmc_value
 
-
+        #Applying the function to the column 'Capacidade de Medição e Calibração (CMC)'
         df_merge_service['Capacidade de Medição e Calibração (CMC)'] = df_merge_service['Capacidade de Medição e Calibração (CMC)'].apply(process_cmc_information)
 
         def get_error_and_uncertainty(valor, intervalos):
@@ -374,19 +419,17 @@ def main():
 
         single_row = df_merge_service.iloc[0]
 
-        #Aqui, vamos pegar os valores de erro e incerteza e colocar em uma coluna separada
-
-        # Iterate through each table in the 'tables' list
+        # Iterating through each table in the 'tables' list
         for i, row in df_merge_service.iterrows():
-            # Iterate through each table in the 'tables' list
+            # Iterating through each table in the 'tables' list
             for j, table in enumerate(tables):
-                # Get the numerical range for the current row and table
+                # Getting the numerical range for the current row and table
                 intervalo = tuple(row['Intervalo'])
                 
                 # Create a new column with True if the value is within the range, False otherwise
                 table[f'Within_Range_{i + 1}'] = pd.to_numeric(table.iloc[:, 0], errors='coerce').between(*intervalo)
 
-        #Agora, vamos coorelacionar df_merge_service com as tabelas
+        #Co-relating df_merge_service with tables
 
         for i, table in enumerate(tables):
             # Create a new column to store the selected values
@@ -411,7 +454,7 @@ def main():
                 # Update the 'Selected_Value' column with the corresponding value from df
                 table.at[index, 'Selected_Value'] = selected_value
 
-        #Aqui, vamos pegar os valores de erro e incerteza e colocar em uma coluna separada
+        #Separating the values of error and uncertainty on a new column
 
         for i, table in enumerate(tables):
             u_column_index = table.columns[table.iloc[0].astype(str).str.startswith('U')].tolist()
@@ -435,9 +478,12 @@ def main():
             else:
                 pass
 
-        #Agora que temos os valores de CMC e as unidades separadas, podemos trabalhar com as colunas
+        #Working with the units of the values
 
         def convert_to_meters(row):
+            '''
+            Function to convert the values to meters
+            '''
             value, unit = row['CMC_Value'], row['CMC_Unit']
             if has_meters and unit == 'mm':
                 return value / 1000  
@@ -447,6 +493,9 @@ def main():
                 return value
 
         def convert_to_mm(row):
+            '''
+            Function to convert the values to millimeters
+            '''
             value, unit = row['CMC_Value'], row['CMC_Unit']
             if has_mm and unit == 'm':
                 return value * 1000  
@@ -456,6 +505,9 @@ def main():
                 return value
 
         def convert_to_µm(row):
+            '''
+            Function to convert the values to micrometers
+            '''
             value, unit = row['CMC_Value'], row['CMC_Unit']
             if has_µm and unit == 'm':
                 return value * 1000000  
@@ -464,6 +516,7 @@ def main():
             else:
                 return value
             
+        #Converting the values to the respective correct unit
         for i in range(len(tables)):
             table = tables[i]
             if 'CMC_Value' in table.columns and 'CMC_Unit' in table.columns and has_meters:
@@ -481,6 +534,7 @@ def main():
         for i, table in enumerate(tables):
             tables[i].iloc[:, u_column_index] = table.iloc[:, u_column_index].apply(convert_to_float)
 
+        #Creating new columns to store results from later checks
         for i in range(len(tables)):
             table = tables[i]
             table['CMC_Value'] = table['CMC_Value'].replace('', None)
@@ -488,17 +542,23 @@ def main():
             table['Range_Verification'] = None
             table['Correction_Verification'] = None
 
+        #Searching for the resolution row on the df_capa DataFrame
         search_condition = (df_capa[0] == 'RESOLUÇÃO')
         result = df_capa.loc[search_condition]
 
+        #Chekicking if the result is not empty, and getting the resolution value (as an string)
         if not result.empty:
             resolucao_value = result.iloc[0, 1]
 
+            #Converting the resolution value to float
             resolucao_value = resolucao_value.split()[0]
             resolucao_value = resolucao_value.replace(',', '.')
+            #Multiplying the resolution value by 3
             resolucao_value = float(resolucao_value) * 3
+            #Creating the negative value of the resolution
             resolucao_negative_value = -resolucao_value
 
+            #Creating a logic to check if the values are within the resolution range
             for i, table in enumerate(tables):
                 for index, row in table.iterrows():
                     correction_column_value = row.iloc[2]
@@ -514,8 +574,8 @@ def main():
                         else:
                             pass
                         
-                        if pd.notna(correction_column_value):
-
+                        if pd.notna(correction_column_value): # Check if the value is not None and not NaN
+                            # Check if the value is within the resolution range
                             if correction_column_value < resolucao_negative_value or correction_column_value > resolucao_value:
                                 table.at[index, 'Correction_Verification'] = True
                     
@@ -546,33 +606,34 @@ def main():
 
 
         def find_excel_row_by_value(sheet, target_value):
+            '''
+            Function to find the row in the Excel file that corresponds to the target value
+            '''
             max_row = sheet.max_row
 
-            # Iterate through rows in the Excel sheet
+            # Iterating through rows in the Excel sheet
             for i in range(1, max_row + 1):
                 cell_obj = sheet.cell(row=i, column=1)  
 
-                # Check if the cell contains the target value
+                # Checking if the cell contains the target value
                 if cell_obj.value == target_value:
-                    # print(f'Match found at row {i}')
                     return i  # Return the row number if found
 
             return None  # Return None if not found
         
 
-        # Iterate through each DataFrame in the list
+        # Iterating through each DataFrame in the list
         for i, table in enumerate(tables):
 
             for index, row in table.iterrows():
-                # Assume the first column in the table corresponds to the second column in Excel
+                # Assuming the first column in the table corresponds to the second column in Excel
 
                 if row['Range_Verification'] == True or row['CMC_Verification'] == True:
                     target_value_range = row[0]
                     target_value_cmc = row[3]
                     target_value_str = str(target_value_range).replace('.', ',')
-                # Find the row in the Excel file that corresponds to the target value
+                # Finding the row in the Excel file that corresponds to the target value
                     excel_row = find_excel_row_by_value(sheet, target_value_str)
-                    # print(excel_row)
 
                     if excel_row is not None:
                         if row['Range_Verification'] == True:
@@ -589,7 +650,7 @@ def main():
         print(f'Erro: {e}')
         pass
 
-main()
+main() #Calling the main function
 
 def verify_origin():
     print('Erros relacionados a formatação do documento:')
