@@ -50,9 +50,14 @@ with col1:
 file_placeholder = st.empty()
 
 file = file_placeholder.file_uploader('Escolha o arquivo que deseja verificar', type=('xls', 'xlsx'))
+file_name = file.name
 
 while file is None:
     time.sleep(1)
+
+if file is not None:
+    file_name = file.name
+    st.markdown(f'<div style="text-align: center; font-size: 36px">{file_name}</div>', unsafe_allow_html=True)
 
 workbook = openpyxl.load_workbook(file, data_only=True)
 
