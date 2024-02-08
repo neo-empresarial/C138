@@ -1,6 +1,8 @@
 import pandas as pd 
 import openpyxl
 from openpyxl import Workbook
+from openpyxl.drawing.image import Image as XLImage
+import matplotlib.pyplot as plt
 import win32com.client as win32
 import datetime
 import nltk
@@ -21,7 +23,7 @@ from rich.console import Console
 from rich.text import Text
 # from sql import *
 import streamlit as st
-from io import StringIO
+from io import StringIO, BytesIO
 from PIL import Image
 from xls2xlsx import XLS2XLSX
 import os
@@ -42,25 +44,17 @@ col1, col2 = st.columns([15, 3], gap="medium")
 with col2:
     st.image([image1_resized])
 
-
 with col1:
     st.title('Verificação de Certificados')
 
-
 file_placeholder = st.empty()
 
-file = file_placeholder.file_uploader('Escolha o arquivo que deseja verificar', type='xlsx')
+file = file_placeholder.file_uploader('Escolha o arquivo que deseja verificar', type=('xls', 'xlsx'))
 
 while file is None:
     time.sleep(1)
 
-    # file_xlsx = file_xlsx.to_excel('file.xlsx', index=False)
-
-# Remove the file uploader placeholder
-
 workbook = openpyxl.load_workbook(file, data_only=True)
-#Loading the workbook (Excel file)
-# workbook = openpyxl.load_workbook(file_xlsx, data_only=True)
 
 #Loading the worksheet (Excel file that we gonna work with)
 sheet = workbook.active
@@ -98,10 +92,8 @@ def get_last_column(sheet):
         
     return None
 
-
 #Activating the function and storing the result in a variable (last_column)
 last_column = get_last_column(sheet)
-
 
 #Starting to create the main function
 def main():
@@ -681,7 +673,6 @@ def main():
 
     # Iterating through each DataFrame in the list
     list=[]
-    print(tables)
 
     for i, table in enumerate(tables):
 
@@ -691,7 +682,6 @@ def main():
             if row['Range_Verification'] == True or row['CMC_Verification'] == True:
                 target_value_range = row[0]
                 target_value_cmc = row[3]
-                print(target_value_range, target_value_cmc)
                 target_value_str = str(target_value_range).replace('.', ',')
             # Finding the row in the Excel file that corresponds to the target value
 
@@ -774,6 +764,7 @@ def verify_pattern_alignment():
                         pass
                     else:
                         error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Alinhanento vertical incorreto</span><br>')
+                        
                 else:
                     error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Alinhamento horizontal incorreto</span><br>')
 
@@ -1159,6 +1150,8 @@ def capture_output():
 
     The file is saved at the 'output' folder.
     '''
+    error_list_table = []
+
     output = StringIO()
     sys.stdout = output
 
@@ -1171,18 +1164,52 @@ def capture_output():
 
     try:
         main()
+    except Exception as e:
+        (f'Não foi possível processar o arquivo verificar erros em tabelas.')
+    try:
         verify_pattern_origin()
+    except:
+        pass
+    try:
         verify_pattern_alignment()
+    except:
+        pass
+    try:
         verify_pattern_font()
+    except:
+        pass
+    try:
         verify_procedure_text_font()
+    except:
+        pass
+    try:
         verify_titles()
+    except:
+        pass
+    try:
         verify_observations_text()
+    except:
+        pass
+    try:
         verify_executer_font()
+    except:
+        pass
+    try:
         verify_table_observation_font()
+    except:
+        pass
+    try:
         verify_header()
+    except:
+        pass
+    try:
         verify_intern_procedure_code()
+    except:
+        pass
+    try:
         verify_Veff()
-
+    except:
+        pass
     finally:
         sys.stdout = sys.__stdout__
         output.seek(0)
