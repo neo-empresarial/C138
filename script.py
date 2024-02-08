@@ -623,8 +623,6 @@ def main():
     else:
         pass
 
-    error_ocurred = False
-
     for i, table in enumerate(tables):
         for index, row in table.iterrows():
             u_column_value = row[u_column_index]
@@ -674,6 +672,19 @@ def main():
     # Iterating through each DataFrame in the list
     list=[]
 
+    cell_coordinate=[]
+
+    cell_coordinate_cmc=[]
+    cell_coordinate_error=[]
+
+    target_value=[]
+    target_value_cmc_list=[]
+    target_value_range_list=[]
+
+    range_error=[]
+    cmc_error=[]
+
+
     for i, table in enumerate(tables):
 
         for index, row in table.iterrows():
@@ -690,10 +701,18 @@ def main():
                     if row['Range_Verification'] == True:
                         excel_row = find_excel_row_by_value_range(sheet, target_value_str)
                         list.append(f'<span style="font-size:20px;">Erro de range na linha {excel_row} - {target_value_str} - valor fora do range indicado pela RBC</span><br>')
+                        cell_coordinate_error.append(excel_row)
+                        target_value.append(target_value_str)
+                        target_value_range_list.append(target_value_str)
+                        range_error.append('Erro de range')
 
                     elif row['CMC_Verification'] == True:
                         excel_row = find_excel_row_by_value_cmc(sheet, target_value_cmc)
                         list.append(f'<span style="font-size:20px;">Erro de CMC na linha {excel_row} - {target_value_cmc} - valor fora do CMC indicado pela RBC</span><br>')
+                        cell_coordinate_cmc.append(excel_row)
+                        target_value.append(target_value_cmc)
+                        target_value_cmc_list.append(target_value_cmc)
+                        cmc_error.append('Erro de CMC')
 
 
                 else:
@@ -704,14 +723,37 @@ def main():
 
     if list:
         col1, col2, col3 = st.columns([1, 1.2, 1])
-        with col2:
-            bullet_list_items = "".join([f"<li>{error}</li>" for error in list])
-            bullet_list = f"<h2>Erros na tabela de medição:</h2><ul>{bullet_list_items}</ul>"
-            st.markdown(bullet_list, unsafe_allow_html=True)
+
+
+    if cell_coordinate_error:
+        data = {'Linha': cell_coordinate_error, 'Valor': target_value_range_list, 'Erro': range_error}
+        df_range = pd.DataFrame(data)
+
+    if cell_coordinate_cmc:
+        data = {'Linha': cell_coordinate_cmc, 'Valor': target_value_cmc_list, 'Erro': cmc_error}
+        df_cmc = pd.DataFrame(data)
+
+    final_df = pd.concat([df_range, df_cmc], axis=0)
+    final_df = final_df.sort_values(by='Linha', ascending=True)
+
+    with col2:
+        st.markdown('<h2 style="text-align: center;">Erros na tabela de medição:</h2></br>', unsafe_allow_html=True)
+        st.markdown(
+    '<div style="display: flex; justify-content: center; margin-bottom: 20px;">' + 
+    final_df.style.hide(axis="index").to_html() +
+    '</div><hr />', 
+    unsafe_allow_html=True
+)
+    
+    # print(final_df)
+    # st.table(final_df)
+        
 
     return tables
 
 error_list = []
+
+
 
 def verify_pattern_origin():
     '''
@@ -730,7 +772,7 @@ def verify_pattern_origin():
     origin_column = standards_df.iloc[:, -2]
 
     if origin_column[1] == 'LMD':
-        error_list.append('<span style="font-size:16px;">Erro: O certificado nao é do padrão CERTI</span><br>')
+        error_list.append('<span style="font-size:16px;">Erro: O certificado não é do padrão CERTI</span><br>')
     else:
         pass
 
@@ -763,10 +805,14 @@ def verify_pattern_alignment():
                     if vertical_alignment == 'center' or vertical_alignment == None:
                         pass
                     else:
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Alinhanento vertical incorreto</span><br>')
+                        error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span><span> Alinhanento vertical incorreto</span><br>')
                         
                 else:
-                    error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Alinhamento horizontal incorreto</span><br>')
+                    error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Alinhamento horizontal incorreto</span><br>')
+
+verify_pattern_font_coordinates = []
+
+verify_pattern_font_fonts = []
 
 def verify_pattern_font():
     '''
@@ -794,13 +840,25 @@ def verify_pattern_font():
                     if cell.row == start_row and font_size == 10:
                         pass
                     elif cell.row == start_row and font_size == 9:
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Fonte {font_size} incorreta</span><br>')
+                        error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Fonte {font_size} incorreta.</span><br>')
+                        verify_pattern_font_coordinates.append(cell.coordinate)
+                        verify_pattern_font_fonts.append(font_size)
                     elif cell.row != start_row and font_size == 9:
                         pass
                     else:
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Fonte e tamanho atuais: {font_name, font_size} Correto: Nunito Sans, 9.0</span><br>')
+                        error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Fonte e tamanho atuais: {font_name, font_size} Correto: Nunito Sans, 9.0</span><br>')
+                        verify_pattern_font_coordinates.append(cell.coordinate)
+                        verify_pattern_font_fonts.append(font_size)
                 else:
-                    error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: fonte e tamanho atuais: {font_name, font_size} Correto: Nunito Sans, 9.0</span><br>')
+                    error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> fonte e tamanho atuais: {font_name, font_size} Correto: Nunito Sans, 9.0</span><br>')
+                    verify_pattern_font_coordinates.append(cell.coordinate)
+                    verify_pattern_font_fonts.append(font_size)
+
+verify_procedure_text_font_coordinates = []
+
+verify_procedure_text_font_font_size = []
+
+verify_procedure_text_font_font_name = []
 
 def verify_procedure_text_font():
     '''
@@ -829,8 +887,18 @@ def verify_procedure_text_font():
                 if font_name == 'Nunito Sans' and font_size == 10:
                     pass
                 else:
-                    error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Fonte {font_name, font_size} incorreta. Correto: Nunito Sans, 10.0</span><br>')
+                    error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span style="font-size:16px;"> Fonte {font_name, font_size} incorreta. Correto: Nunito Sans, 10.0</span><br>')
+                    verify_procedure_text_font_coordinates.append(cell.coordinate)
+                    verify_procedure_text_font_font_size.append(font_size)
+                    verify_procedure_text_font_font_name.append(font_name)
 
+verify_titles_coordinates = []
+
+verify_titles_font_names = []
+
+verify_titles_font_sizes = []
+
+verify_titles_font_bold = []
 def verify_titles():
     '''
     Function to verify the font of all titles in the document.
@@ -862,11 +930,11 @@ def verify_titles():
         if font_name == 'Nunito Sans' and font_size == 11 and font_bold == True:
             pass
         elif font_name != 'Nunito Sans':
-            error_list.append(f'<span style="font-size:16px;">{item}: Fonte icorreta. Correta: Nunito Sans</span><br>')
+            error_list.append(f'<span style="font-size:26px;">{item}</span>:<span> Fonte icorreta. Correta: Nunito Sans</span><br>')
         elif font_size != 11:
-            error_list.append(f'<span style="font-size:16px;">{item}: Tamanho da fonte incorreto. Correto: 11></span><br>')
+            error_list.append(f'<span style="font-size:26px;">{item}</span>:<span> Tamanho da fonte incorreto. Correto: 11></span><br>')
         elif font_bold != True:
-            error_list.append(f'<span style="font-size:16px;">{item}: Erro no negrito. Estado atual:{font_bold}, espera-se True</span><br>')
+            error_list.append(f'<span style="font-size:26px;">{item}</span>:<span> Erro no negrito. Estado atual:{font_bold}, espera-se True</span><br>')
         else:
             pass
 
@@ -894,7 +962,7 @@ def verify_observations_text():
                 if font_name == 'Nunito Sans' and font_size == 9:
                     pass
                 else:
-                    error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Observações com formato {font_name,font_size} incorreto. Correto: Nunito Sans, 9.0</span><br>')
+                    error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Observações com formato {font_name,font_size} incorreto. Correto: Nunito Sans, 9.0</span><br>')
 
 def verify_executer_font():
     '''
@@ -923,11 +991,11 @@ def verify_executer_font():
                     if font_name == 'Nunito Sans' and font_size == 10 and font_bold == True:
                         pass
                     elif font_name != 'Nunito Sans':
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Fonte {font_name} incorreta. Correto: Nunito Sans</span><br>')
+                        error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Fonte {font_name} incorreta. Correto: Nunito Sans</span><br>')
                     elif font_size != 10:
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Tamanho da fonte {font_size} incorreto. Correto: 10.0</span><br>')
+                        error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Tamanho da fonte {font_size} incorreto. Correto: 10.0</span><br>')
                     elif font_bold != True:
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Estado de negrito {font_bold} incorreto, espera-se True</span><br>')
+                        error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Estado de negrito {font_bold} incorreto, espera-se True</span><br>')
                     else:
                         pass
 
@@ -957,9 +1025,9 @@ def verify_table_observation_font():
                     if font_name == 'Nunito Sans' and font_size == 8:
                         pass
                     elif font_name != 'Nunito Sans':
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Fonte {font_name} incorreta. Correta: Nunito Sans</span><br>')
+                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}</span>:<span> Fonte {font_name} incorreta. Correta: Nunito Sans</span><br>')
                     elif font_size != 8:
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}: Tamanho da fonte {font_size} incorreto. Correto: 8.0</span><br>')
+                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}</span>:<span> Tamanho da fonte {font_size} incorreto. Correto: 8.0</span><br>')
                     else:
                         pass
 
@@ -1000,65 +1068,65 @@ def verify_header():
     if start_row_name == 'Nunito Sans' and start_row_size == 14 and start_row_height == 24.75 and start_row_bold != True:
         pass
     elif start_row_name != 'Nunito Sans':
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=start_row, column=1).coordinate}, fonte atual: {start_row_name} - fonte correta: Nunito Sans</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=start_row, column=1).coordinate}</span>,<span> fonte atual: {start_row_name} - fonte correta: Nunito Sans</span><br>')
     elif start_row_size != 14:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=start_row, column=1).coordinate}, tamanho atual: {start_row_size} - tamanho correto: 14.0</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=start_row, column=1).coordinate}</span>,<span> tamanho atual: {start_row_size} - tamanho correto: 14.0</span><br>')
     elif start_row_height != 24.75:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=start_row, column=1).coordinate}, altura atual: {start_row_height} - altura correta: 24.75</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=start_row, column=1).coordinate}</span>,<span> altura atual: {start_row_height} - altura correta: 24.75</span><br>')
     elif start_row_bold == True:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=start_row, column=1).coordinate}, negrito atual: {start_row_bold} - negrito correto: False</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=start_row, column=1).coordinate}</span>,<span> negrito atual: {start_row_bold} - negrito correto: False</span><br>')
     else:
         pass
 
     if second_row_name == 'Nunito Sans' and second_row_size == 14 and second_row_height == 17.25 and second_row_bold != True:
         pass
     elif second_row_name != 'Nunito Sans':
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 1, column=1).coordinate}, fonte atual: {second_row_name} - fonte correta: Nunito Sans</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 1, column=1).coordinate}</span>,<span> fonte atual: {second_row_name} - fonte correta: Nunito Sans</span><br>')
     elif second_row_size != 14:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 1, column=1).coordinate}, tamanho atual: {second_row_size} - tamanho correto: 11.0</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 1, column=1).coordinate}</span>,<span> tamanho atual: {second_row_size} - tamanho correto: 11.0</span><br>')
     elif second_row_height != 17.25:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 1, column=1).coordinate}, altura atual: {second_row_height} - altura correta: 18.0</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 1, column=1).coordinate}</span>,<span> altura atual: {second_row_height} - altura correta: 18.0</span><br>')
     elif second_row_bold == True:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 1, column=1).coordinate}, negrito atual: {second_row_bold} - negrito correto: False</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 1, column=1).coordinate}</span>,<span> negrito atual: {second_row_bold} - negrito correto: False</span><br>')
     else:
         pass
 
     if third_row_name == 'Nunito Sans' and third_row_size == 9 and third_row_height == 15 and third_row_bold != True:
         pass
     elif third_row_name != 'Nunito Sans':
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 2, column=1).coordinate}, fonte atual: {third_row_name} - fonte correta: Nunito Sans</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 2, column=1).coordinate}</span>,<span> fonte atual: {third_row_name} - fonte correta: Nunito Sans</span><br>')
     elif third_row_size != 9:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 2, column=1).coordinate}, tamanho atual: {third_row_size} - tamanho correto: 11.0</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 2, column=1).coordinate}</span>,<span> tamanho atual: {third_row_size} - tamanho correto: 11.0</span><br>')
     elif third_row_height != 15:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 2, column=1).coordinate}, altura atual: {third_row_height} - altura correta: 18.0</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 2, column=1).coordinate}</span>,<span> altura atual: {third_row_height} - altura correta: 18.0</span><br>')
     elif third_row_bold == True:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 2, column=1).coordinate}, negrito atual: {third_row_bold} - negrito correto: False</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 2, column=1).coordinate}</span>,<span> negrito atual: {third_row_bold} - negrito correto: False</span><br>')
     else:
         pass
 
     if fourth_row_name == 'Nunito Sans' and fourth_row_size == 22 and fourth_row_height == 39 and fourth_row_bold == True:
         pass
     elif fourth_row_name != 'Nunito Sans':
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 3, column=1).coordinate}, fonte atual: {fourth_row_name} - fonte correta: Nunito Sans</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 3, column=1).coordinate}</span>,<span> fonte atual: {fourth_row_name} - fonte correta: Nunito Sans</span><br>')
     elif fourth_row_size != 22:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 3, column=1).coordinate}, tamanho atual: {fourth_row_size} - tamanho correto: 22.0</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 3, column=1).coordinate}</span>,<span> tamanho atual: {fourth_row_size} - tamanho correto: 22.0</span><br>')
     elif fourth_row_height != 39:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 3, column=1).coordinate}, altura atual: {fourth_row_height} - altura correta: 39.0</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 3, column=1).coordinate}</span>,<span> altura atual: {fourth_row_height} - altura correta: 39.0</span><br>')
     elif fourth_row_bold != True:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 3, column=1).coordinate}, negrito atual: {fourth_row_bold} - negrito correto: True</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 3, column=1).coordinate}</span>,<span> negrito atual: {fourth_row_bold} - negrito correto: True</span><br>')
     else:
         pass
 
     if fifth_row_name == 'Nunito Sans' and fifth_row_size == 22 and fifth_row_height == 35.25 and fifht_row_bold == True:
         pass
     elif fifth_row_name != 'Nunito Sans':
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 4, column=1).coordinate}, fonte atual: {fifth_row_name} - fonte correta: Nunito Sans</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 4, column=1).coordinate}</span>,<span> fonte atual: {fifth_row_name} - fonte correta: Nunito Sans</span><br>')
     elif fifth_row_size != 22:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 4, column=1).coordinate}, tamanho atual: {fifth_row_size} - tamanho correto: 22.0</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 4, column=1).coordinate}</span>,<span> tamanho atual: {fifth_row_size} - tamanho correto: 22.0</span><br>')
     elif fifth_row_height != 35.25:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 4, column=1).coordinate}, altura atual: {fifth_row_height} - altura correta: 35.25</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 4, column=1).coordinate}</span>,<span> altura atual: {fifth_row_height} - altura correta: 35.25</span><br>')
     elif fifht_row_bold != True:
-        error_list.append(f'<span style="font-size:16px;">{sheet.cell(row=1 + 4, column=1).coordinate}, negrito atual: {fifht_row_bold} - negrito correto: True</span><br>')
+        error_list.append(f'<span style="font-size:26px;">{sheet.cell(row=1 + 4, column=1).coordinate}</span>,<span> negrito atual: {fifht_row_bold} - negrito correto: True</span><br>')
     else:
         pass
 
@@ -1138,7 +1206,7 @@ def verify_Veff():
                         if row['neff'] == 'Infinito' or row['neff'] == 'infinito':
                             pass
                         else:
-                            error_list.append(f'<span style="font-size:16px;">Linha {index} da tabela: νeff diferente de infinito para k = 2</span><br>')
+                            error_list.append(f'<span style="font-size:26px;">Linha {index} da tabela</span>:<span> νeff diferente de infinito para k = 2</span><br>')
                     else:
                         pass
 
@@ -1221,12 +1289,22 @@ if error_list:
         col1, col2, col3= st.columns([1, 1.2, 1])
         with col2:
             bullet_list_items = "".join([f"<li>{error}</li>" for error in error_list])
-            bullet_list = f"<h2>Erros na formatação do documento:</h2><ul>{bullet_list_items}</ul>"
+            bullet_list = f"<h2 style='text-align: center; margin-top: 0px'>Erros na formatação do documento:</h2><ul>{bullet_list_items}</ul>"
             st.markdown(bullet_list, unsafe_allow_html=True)
 print(output_text)
+
+# if verify_pattern_font_coordinates:
+#     data = {'Célula': verify_pattern_font_coordinates, 'Tamanho da fonte (incorreto)': verify_pattern_font_fonts}
+#     df = pd.DataFrame(data)
+#     st.table(df)
+
+# if verify_procedure_text_font_coordinates:
+#     data = {'Célula': verify_procedure_text_font_coordinates, 'Tamanho da fonte (incorreto)': verify_procedure_text_font_font_size, 'Fonte (incorreta)': verify_procedure_text_font_font_name}
+#     df = pd.DataFrame(data)
+#     st.table(df)
 
 while output_text is None:
     st.write('Aguarde...')
     break
 
-st.write(output_text, unsafe_allow_html=True)
+st.markdown('<div style="display: flex; text-align: center>"' + output_text + '</div>', unsafe_allow_html=True)
