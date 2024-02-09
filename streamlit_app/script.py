@@ -28,6 +28,27 @@ from xls2xlsx import XLS2XLSX
 import os
 
 # Set page configuration
+st.set_page_config(layout="wide")
+
+m = st.markdown("""
+<style>
+div.stButton > button:first-child {
+    background-color: rgb(255,140,0);
+    color: white;
+}
+div.stButton:hover > button:first-child {
+border-color: white;
+}
+div.stButton:click > button:first-child {
+border-color: white;
+color: white;
+}
+a:link {
+color: white;
+text-decoration: none;
+}
+</style>
+                """, unsafe_allow_html=True)
 
 image1 = Image.open("images/SimboloNEO_white-border_transp.png", 'r')
 
@@ -36,7 +57,22 @@ width2 = 180
 height = 80
 image1_resized = image1.resize((int(image1.width * (height / image1.height)), height))
 # image2_resized = image2.resize((int(image2.width * (height / image2.height)), height))
-st.set_page_config(layout="wide")
+
+def send_email(link):
+    '''
+    Function to send an email to the support team
+    '''
+    js = f"window.open('{link}', '_blank')"
+    html = f"<script>{js}</script>"
+    st.markdown(html, unsafe_allow_html=True)
+
+
+image = 'streamlit_app\images\TelefoneIcon.png'
+st.sidebar.markdown('<h1 style="text-align: center; margin-bottom: 1px; padding-bottom: 5px">Contato</h1><hr style="margin-top: 10px" />', unsafe_allow_html=True)
+
+st.sidebar.markdown('<div><h2 style="text-align: left;">📞 +55 (48) 3239-2041</h2></div>', unsafe_allow_html=True)
+st.sidebar.markdown('<div><h2 style="text-align: left;"><a href="mailto:faleconosco@neo.certi.org.br">📩 faleconosco@neo.certi.org.br</a></h2></div>', unsafe_allow_html=True)
+
 
 col1, col2 = st.columns([15, 3], gap="medium")
 
@@ -49,6 +85,16 @@ with col1:
 file_placeholder = st.empty()
 
 file = file_placeholder.file_uploader('Escolha o arquivo que deseja verificar', type=('xls', 'xlsx'))
+st.markdown('<hr />', unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns([1, 1, 1])
+with col2:
+    st.markdown('<div style="border: 1px solid orange; border-radius: 20px"><h2 style="text-align: center;">Converter .xls em .xlsx</h2><h5 style="text-align: center; margin: 8px">Caso o seu arquivo seja .xls, clique no botão abaixo para converte-lo em .xlsx</h5></div><br>', unsafe_allow_html=True)
+    
+
+col1, col2, col3 = st.columns([1.72, 1, 1])
+with col2:
+    st.button('Converter')
 
 while file is None:
     time.sleep(1)
@@ -1028,9 +1074,9 @@ def verify_table_observation_font():
                     if font_name == 'Nunito Sans' and font_size == 8:
                         pass
                     elif font_name != 'Nunito Sans':
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}</span>:<span> Fonte {font_name} incorreta. Correta: Nunito Sans</span><br>')
+                        error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Fonte {font_name} incorreta. Correta: Nunito Sans</span><br>')
                     elif font_size != 8:
-                        error_list.append(f'<span style="font-size:16px;">{cell.coordinate}</span>:<span> Tamanho da fonte {font_size} incorreto. Correto: 8.0</span><br>')
+                        error_list.append(f'<span style="font-size:216px;">{cell.coordinate}</span>:<span> Tamanho da fonte {font_size} incorreto. Correto: 8.0</span><br>')
                     else:
                         pass
 
