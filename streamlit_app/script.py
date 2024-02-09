@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import datetime
 import nltk
 import xlrd
+import win32com.client as win32
 from nltk import tokenize
 import requests
 from bs4 import BeautifulSoup
@@ -26,6 +27,10 @@ from io import StringIO, BytesIO
 from PIL import Image
 from xls2xlsx import XLS2XLSX
 import os
+import pythoncom
+# from converter import convert_to_xlsx
+
+
 
 # Set page configuration
 st.set_page_config(layout="wide")
@@ -68,11 +73,10 @@ def send_email(link):
 
 
 image = 'streamlit_app\images\TelefoneIcon.png'
-st.sidebar.markdown('<h1 style="text-align: center; margin-bottom: 1px; padding-bottom: 5px">Contato</h1><hr style="margin-top: 10px" />', unsafe_allow_html=True)
 
+st.sidebar.markdown('<h1 style="text-align: center; margin-bottom: 1px; padding-bottom: 5px">Contato</h1><hr style="margin-top: 10px" />', unsafe_allow_html=True)
 st.sidebar.markdown('<div><h2 style="text-align: left;">📞 +55 (48) 3239-2041</h2></div>', unsafe_allow_html=True)
 st.sidebar.markdown('<div><h2 style="text-align: left;"><a href="mailto:faleconosco@neo.certi.org.br">📩 faleconosco@neo.certi.org.br</a></h2></div>', unsafe_allow_html=True)
-
 
 col1, col2 = st.columns([15, 3], gap="medium")
 
@@ -90,11 +94,30 @@ st.markdown('<hr />', unsafe_allow_html=True)
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     st.markdown('<div style="border: 1px solid orange; border-radius: 20px"><h2 style="text-align: center;">Converter .xls em .xlsx</h2><h5 style="text-align: center; margin: 8px">Caso o seu arquivo seja .xls, clique no botão abaixo para converte-lo em .xlsx</h5></div><br>', unsafe_allow_html=True)
-    
+
+def convert_to_xlsx():
+    excel = win32.gencache.EnsureDispatch('Excel.Application', pythoncom.CoInitialize())
+    for file in os.listdir(os.getcwd()):
+        filename,fileextension = os.path.splitext(file)
+        if fileextension == ".xls": 
+            try:
+                wb = excel.Workbooks.Open(os.path.join(os.getcwd(), file))
+                output_path = os.path.join(os.getcwd(), filename + ".xlsx")
+                wb.SaveAs(output_path, FileFormat=51)
+                wb.Close()
+                print("File conversion complete")
+            except Exception as e:
+                print("Could not convert file:", filename)
+                print("Error:", e)
+    excel.Quit()
+
+to_convert_file = st.file_uploader('Escolha o arquivo que deseja converter', type=('xls'))
+if to_convert_file is not None:
+    convert_to_xlsx()
 
 col1, col2, col3 = st.columns([1.72, 1, 1])
 with col2:
-    st.button('Converter')
+    st.button('Converter', on_click=convert_to_xlsx)
 
 while file is None:
     time.sleep(1)
