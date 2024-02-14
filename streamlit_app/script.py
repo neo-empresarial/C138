@@ -31,7 +31,6 @@ import pythoncom
 # from converter import convert_to_xlsx
 
 
-
 # Set page configuration
 st.set_page_config(layout="wide")
 
@@ -91,9 +90,9 @@ file_placeholder = st.empty()
 file = file_placeholder.file_uploader('Escolha o arquivo que deseja verificar', type=('xls', 'xlsx'))
 st.markdown('<hr />', unsafe_allow_html=True)
 
-col1, col2, col3 = st.columns([1, 1, 1])
-with col2:
-    st.markdown('<div style="border: 1px solid orange; border-radius: 20px"><h2 style="text-align: center;">Converter .xls em .xlsx</h2><h5 style="text-align: center; margin: 8px">Caso o seu arquivo seja .xls, clique no botão abaixo para converte-lo em .xlsx</h5></div><br>', unsafe_allow_html=True)
+# col1, col2, col3 = st.columns([1, 1, 1])
+# with col2:
+#     st.markdown('<div style="border: 1px solid orange; border-radius: 20px"><h2 style="text-align: center;">Converter .xls em .xlsx</h2><h5 style="text-align: center; margin: 8px">Caso o seu arquivo seja .xls, clique no botão abaixo para converte-lo em .xlsx</h5></div><br>', unsafe_allow_html=True)
 
 def convert_to_xlsx():
     excel = win32.gencache.EnsureDispatch('Excel.Application', pythoncom.CoInitialize())
@@ -111,13 +110,13 @@ def convert_to_xlsx():
                 print("Error:", e)
     excel.Quit()
 
-to_convert_file = st.file_uploader('Escolha o arquivo que deseja converter', type=('xls'))
-if to_convert_file is not None:
-    convert_to_xlsx()
+# to_convert_file = st.file_uploader('Escolha o arquivo que deseja converter', type=('xls'))
+# if to_convert_file is not None:
+#     convert_to_xlsx()
 
-col1, col2, col3 = st.columns([1.72, 1, 1])
-with col2:
-    st.button('Converter', on_click=convert_to_xlsx)
+# col1, col2, col3 = st.columns([1.72, 1, 1])
+# with col2:
+#     st.button('Converter', on_click=convert_to_xlsx)
 
 while file is None:
     time.sleep(1)
@@ -1364,16 +1363,6 @@ if error_list:
             bullet_list = f"<h2 style='text-align: center; margin-top: 0px'>Erros na formatação do documento:</h2><ul>{bullet_list_items}</ul>"
             st.markdown(bullet_list, unsafe_allow_html=True)
 print(output_text)
-
-# if verify_pattern_font_coordinates:
-#     data = {'Célula': verify_pattern_font_coordinates, 'Tamanho da fonte (incorreto)': verify_pattern_font_fonts}
-#     df = pd.DataFrame(data)
-#     st.table(df)
-
-# if verify_procedure_text_font_coordinates:
-#     data = {'Célula': verify_procedure_text_font_coordinates, 'Tamanho da fonte (incorreto)': verify_procedure_text_font_font_size, 'Fonte (incorreta)': verify_procedure_text_font_font_name}
-#     df = pd.DataFrame(data)
-#     st.table(df)
 
 while output_text is None:
     st.write('Aguarde...')
