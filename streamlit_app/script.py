@@ -51,6 +51,35 @@ a:link {
 color: white;
 text-decoration: none;
 }
+button.st-emotion-cache-19rxjzo:hover {
+    color: rgb(255,140,0);
+    border-color: rgb(255,140,0);
+}
+button.st-emotion-cache-19rxjzo:active {
+    color: rgb(255,140,0);
+    border-color: rgb(255,140,0);
+    text-clor: white;
+    background-color: rgb(14, 17, 23);
+    
+}
+button.st-emotion-cache-19rxjzo:focus:not(:active) {
+    color: rgb(255,140,0);
+    border-color: rgb(255,140,0);
+    background-color: rgb(14, 17, 23);
+    text-color: rgb(255,140,0);
+}
+button.st-emotion-cache-19rxjzo:clicked {
+    color: rgb(255,140,0);
+    border-color: rgb(255,140,0);
+    background-color: rgb(255,140,0);
+    text-clor: rgb(255,140,0);
+}
+.st-emotion-cache-p5msec:hover {
+    color: rgb(255,140,0);
+}
+.st-emotion-cache-p5msec:hover svg {
+fill: rgb(255,140,0);
+}
 </style>
                 """, unsafe_allow_html=True)
 
@@ -88,6 +117,13 @@ with col1:
 file_placeholder = st.empty()
 
 file = file_placeholder.file_uploader('Escolha o arquivo que deseja verificar', type=('xls', 'xlsx'))
+with st.expander('Instruções'):
+    st.markdown('<h3>Como utilizar a ferramenta:</h3>', unsafe_allow_html=True)
+    st.markdown('<p>1. Clique no botão acima para fazer o upload do arquivo que deseja verificar.</p>', unsafe_allow_html=True)
+    st.markdown('<p>2. Aguarde enquanto o arquivo é carregado.</p>', unsafe_allow_html=True)
+    st.markdown('<p>3. Após o carregamento, a ferramenta irá verificar se o arquivo está correto e, em caso positivo, irá gerar um relatório com os resultados.</p>', unsafe_allow_html=True)
+    st.markdown('<p>4. Caso o arquivo não esteja correto, a ferramenta irá informar o erro encontrado.</p>', unsafe_allow_html=True)
+    st.markdown('<p>5. Em caso de dúvidas, entre em contato com o suporte.</p>', unsafe_allow_html=True)
 st.markdown('<hr />', unsafe_allow_html=True)
 
 # col1, col2, col3 = st.columns([1, 1, 1])
@@ -125,7 +161,11 @@ if file is not None:
     file_name = file.name
     st.markdown(f'<div style="text-align: center; font-size: 36px">{file_name}</div>', unsafe_allow_html=True)
 
-workbook = openpyxl.load_workbook(file, data_only=True)
+try:
+    workbook = openpyxl.load_workbook(file, data_only=True)
+except Exception as e:
+    st.error(f'Erro ao carregar o arquivo: Arquivo corrompido ou formato inválido.')
+    st.stop()
 
 #Loading the worksheet (Excel file that we gonna work with)
 sheet = workbook.active
@@ -815,11 +855,6 @@ def main():
     '</div><hr />', 
     unsafe_allow_html=True
 )
-    
-    # print(final_df)
-    # st.table(final_df)
-        
-
     return tables
 
 error_list = []
