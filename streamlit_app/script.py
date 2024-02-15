@@ -850,14 +850,24 @@ def main():
 
     if cell_coordinate_error:
         data = {'Linha': cell_coordinate_error, 'Valor': target_value_range_list, 'Erro': range_error}
+        print(data)
         df_range = pd.DataFrame(data)
+    else:
+        pass
 
     if cell_coordinate_cmc:
         data = {'Linha': cell_coordinate_cmc, 'Valor': target_value_cmc_list, 'Erro': cmc_error}
         df_cmc = pd.DataFrame(data)
+    else:
+        pass
 
-    final_df = pd.concat([df_range, df_cmc], axis=0)
-    final_df = final_df.sort_values(by='Linha', ascending=True)
+    if cell_coordinate_error and cell_coordinate_cmc:
+        final_df = pd.concat([df_range, df_cmc], axis=0)
+        final_df = final_df.sort_values(by='Linha', ascending=True)
+    elif cell_coordinate_error:
+        final_df = df_range
+    elif cell_coordinate_cmc:
+        final_df = df_cmc
 
     with col2:
         st.markdown('<h2 style="text-align: center;">Erros na tabela de medição:</h2></br>', unsafe_allow_html=True)
