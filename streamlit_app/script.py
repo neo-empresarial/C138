@@ -1145,7 +1145,7 @@ def verify_table_observation_font():
                     elif font_name != 'Nunito Sans':
                         error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Fonte {font_name} incorreta. Correta: Nunito Sans</span><br>')
                     elif font_size != 8:
-                        error_list.append(f'<span style="font-size:216px;">{cell.coordinate}</span>:<span> Tamanho da fonte {font_size} incorreto. Correto: 8.0</span><br>')
+                        error_list.append(f'<span style="font-size:26px;">{cell.coordinate}</span>:<span> Tamanho da fonte {font_size} incorreto. Correto: 8.0</span><br>')
                     else:
                         pass
 
