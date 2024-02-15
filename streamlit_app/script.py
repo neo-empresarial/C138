@@ -28,8 +28,8 @@ from PIL import Image
 from xls2xlsx import XLS2XLSX
 import os
 import pythoncom
+import tempfile
 # from converter import convert_to_xlsx
-
 
 # Set page configuration
 st.set_page_config(layout="wide")
@@ -117,9 +117,46 @@ with col2:
 with col1:
     st.title('Verificação de Certificados')
 
+def convert_to_xlsx(file_path):
+    excel = win32.gencache.EnsureDispatch('Excel.Application', pythoncom.CoInitialize())
+    try:
+        wb = excel.Workbooks.Open(file_path)
+        output_path = os.path.splitext(file_path)[0] + ".xlsx"
+        wb.SaveAs(output_path, FileFormat=51)
+        wb.Close()
+        excel.Quit()
+        return output_path
+    except Exception as e:
+        print("Could not convert file:", file_path)
+        print("Error:", e)
+        return None
+
 file_placeholder = st.empty()
 
 file = file_placeholder.file_uploader('Escolha o arquivo que deseja verificar', type=('xls', 'xlsx'))
+
+if file is not None:
+    file_extension = os.path.splitext(file.name)[1]
+    if file_extension != ".xlsx":
+        # Create temporary file
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file.write(file.getvalue())
+        temp_file.close()
+
+        # Convert to xlsx
+        converted_file_path = convert_to_xlsx(temp_file.name)
+        if converted_file_path is not None:
+            st.success("File conversion complete. Download the converted file below.")
+            workbook = openpyxl.load_workbook(converted_file_path, data_only=True)
+        else:
+            st.error("Failed to convert the file.")
+
+        # Clean up temporary file
+        os.unlink(temp_file.name)
+    else:
+        workbook = openpyxl.load_workbook(file, data_only=True)
+        st.warning("The uploaded file is already in .xlsx format.")
+
 with st.expander('Instruções'):
     st.markdown('<h3>Como utilizar a ferramenta:</h3>', unsafe_allow_html=True)
     st.markdown('<p>1. Clique no botão acima para fazer o upload do arquivo que deseja verificar.</p>', unsafe_allow_html=True)
@@ -129,34 +166,6 @@ with st.expander('Instruções'):
     st.markdown('<p>5. Em caso de dúvidas, entre em contato com o suporte.</p>', unsafe_allow_html=True)
 st.markdown('<hr />', unsafe_allow_html=True)
 
-# col1, col2, col3 = st.columns([1, 1, 1])
-# with col2:
-#     st.markdown('<div style="border: 1px solid orange; border-radius: 20px"><h2 style="text-align: center;">Converter .xls em .xlsx</h2><h5 style="text-align: center; margin: 8px">Caso o seu arquivo seja .xls, clique no botão abaixo para converte-lo em .xlsx</h5></div><br>', unsafe_allow_html=True)
-
-def convert_to_xlsx():
-    excel = win32.gencache.EnsureDispatch('Excel.Application', pythoncom.CoInitialize())
-    for file in os.listdir(os.getcwd()):
-        filename,fileextension = os.path.splitext(file)
-        if fileextension == ".xls": 
-            try:
-                wb = excel.Workbooks.Open(os.path.join(os.getcwd(), file))
-                output_path = os.path.join(os.getcwd(), filename + ".xlsx")
-                wb.SaveAs(output_path, FileFormat=51)
-                wb.Close()
-                print("File conversion complete")
-            except Exception as e:
-                print("Could not convert file:", filename)
-                print("Error:", e)
-    excel.Quit()
-
-# to_convert_file = st.file_uploader('Escolha o arquivo que deseja converter', type=('xls'))
-# if to_convert_file is not None:
-#     convert_to_xlsx()
-
-# col1, col2, col3 = st.columns([1.72, 1, 1])
-# with col2:
-#     st.button('Converter', on_click=convert_to_xlsx)
-
 while file is None:
     time.sleep(1)
 
@@ -164,11 +173,11 @@ if file is not None:
     file_name = file.name
     st.markdown(f'<div style="text-align: center; font-size: 36px">{file_name}</div>', unsafe_allow_html=True)
 
-try:
-    workbook = openpyxl.load_workbook(file, data_only=True)
-except Exception as e:
-    st.error(f'Erro ao carregar o arquivo: Arquivo corrompido ou formato inválido.')
-    st.stop()
+# try:
+#     workbook = openpyxl.load_workbook(file, data_only=True)
+# except Exception as e:
+#     st.error(f'Erro ao carregar o arquivo: Arquivo corrompido ou formato inválido.')
+#     st.stop()
 
 #Loading the worksheet (Excel file that we gonna work with)
 sheet = workbook.active
