@@ -51,6 +51,9 @@ a:link {
 color: white;
 text-decoration: none;
 }
+button.st-emotion-cache-1lp7pgu:hover {
+    color: rgb(255,140,0);
+}
 button.st-emotion-cache-19rxjzo:hover {
     color: rgb(255,140,0);
     border-color: rgb(255,140,0);
